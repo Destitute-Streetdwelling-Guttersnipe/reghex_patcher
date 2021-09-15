@@ -1,182 +1,178 @@
-credits = "[-] ---- Hex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
+credits = "[-] ---- RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
 
 import re
 import collections
-import hashlib
 
-class File():
-
+class File:
     def __init__(self, filename):
         with open(filename, 'rb') as file:
             self.data = bytearray(file.read())
 
-    def loadSigs(self):
-        sigsData = Sigs.load(self.data)
-        if not sigsData:
-            raise ValueError("Could not find matching hash for input file")
-        print("\n[+] Found signatures for {} version {} {}".format(sigsData['app'], sigsData['version'], sigsData['os']))
-        return sigsData['sigs']
-
-    def patch(self, sig):
-        print("[+] Patching {}".format(sig.name))
-        offset, new_bytes = Patch.searchIn(self.data, sig)
-        print("[+] at {}: {} -> {}".format(hex(offset), HexBytes(self.data[offset:offset + len(new_bytes)]), HexBytes(new_bytes)))
-        self.data[offset:offset + len(new_bytes)] = new_bytes
+    def patch(self):
+        for sig in Sigs().Load(self.data):
+            Patcher().Patch(sig, self.data)        
 
     def save(self, new_filename):
         with open(new_filename, "wb") as file:
             file.write(self.data)
-        print("[+] Patched file written at {}".format(new_filename))
+        print("[+] Patched file saved to {}".format(new_filename))
 
-class Fix():
-    CALL_LEN = 5  # E8 xx xx xx xx
+def FindRegHex(sig, data):
+    pattern = re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", sig.reghex) # escape hex bytes: E9 . . . . E8 . . . .
+    matches = list(re.finditer(bytes(pattern, encoding='utf-8'), data, re.DOTALL | re.VERBOSE))[:10] # only 10 matches
+    if len(matches) == 1: print("[-] Found at 0x{:x}: pattern {}".format(matches[0].start(), sig.name))
+    if len(matches) > 1: print("[!] Found pattern {}: at {}".format(sig.name, ','.join([hex(m.start()) for m in matches])))
+    return matches[0] if len(matches) > 0 else None
+
+class Patcher:
+    def Patch(self, sig, data):
+        match = FindRegHex(sig, data)
+        if not match: exit("[!] Can not find pattern: {} '{}'".format(sig.name, sig.reghex))
+        offset = match.start()
+        if sig.is_ref:
+            offset = self.RelativeOffset(offset, data)
+        new_bytes = self.Fix2newBytes(sig.fix, data[offset])
+        print("[+] Patch at 0x{:x}: {}\n".format(offset, new_bytes.hex(' ')))
+        data[offset : offset + len(new_bytes)] = new_bytes
+
+    def RelativeOffset(self, offset, data):
+        next_offset = offset + self.InstructionLength(data[offset])
+        relative_address = int.from_bytes(data[next_offset - 4 : next_offset], byteorder='little') # assume the address is at the end of the instruction
+        return (next_offset + relative_address) & 0xFFFFFFFF
+
     FIXES = {
-        "nop": "90" * CALL_LEN, # nop for E8 xx xx xx xx
+        "nop": "90", # nop
         "ret": "C3",  # ret
         "ret0": "48 31 C0 C3",  # xor rax, rax; ret
         "ret1": "48 31 C0 48 FF C0 C3",  # xor rax, rax; inc rax; ret
         "ret281": "48 C7 C0 19 01 00 00 C3",  # mov rax, 281; ret
     }
+    # FIXES.update((k, bytes.fromhex(v)) for k, v in FIXES.items())
 
-    @classmethod
-    def new_bytes(cls, fix):
-        assert fix in cls.FIXES
-        return bytes.fromhex(cls.FIXES[fix])
+    def Fix2newBytes(self, fix, opcode):
+        if not fix in self.FIXES: exit("[!] Can not find fix: {}".format(fix))
+        length = self.InstructionLength(opcode) if fix == "nop" else 1
+        return bytes.fromhex(self.FIXES[fix]) * length
 
-class Patch:
-    ANY_BYTE = b"."
+    INSTRUCTION_LENGTHS = {
+        "E8": 5, # call [dword]
+    }
 
-    @classmethod
-    def process_wildcards(cls, pattern):
-        pattern = [re.escape(bytes.fromhex(byte)) if byte != "?" else cls.ANY_BYTE for byte in pattern.split(" ")]
-        return b"".join(pattern)
+    def InstructionLength(self, opcode):
+        length = self.INSTRUCTION_LENGTHS["{:X}".format(opcode)]
+        if not length: exit("[!] Can not find instruction: {:X}".format(opcode))
+        return length
 
-    @classmethod
-    def searchIn(self, data, sig):
-        pattern = self.process_wildcards(sig.pattern)
-        match = re.search(pattern, data, re.S)
-        if not match:
-            raise ValueError("Could not find pattern: {}".format(sig.pattern))
-        offset = match.start() + sig.offset
-        if sig.is_ref:
-            offset = Ref.get_addr_from_call(offset, match.group(0)[sig.offset:])
-        new_bytes = Fix.new_bytes(sig.fix)
-        return offset, new_bytes
-
-class Ref:
-    CALL_LEN = 5  # E8 xx xx xx xx
-    OPCODE_LEN = 1  # E8
-
-    @classmethod
-    def get_addr_from_call(cls, offset, call_bytes):
-        addr_bytes = bytearray(call_bytes[cls.OPCODE_LEN:cls.CALL_LEN]) # assume RVA is at the end of the instruction
-        rel_addr = int.from_bytes(addr_bytes, byteorder='little')
-        addr = (offset + cls.CALL_LEN + rel_addr) & 0xFFFFFFFF
-        print("[*] found RVA at {}: {} -> {}".format(hex(offset), hex(rel_addr), hex(addr)))
-        return addr
-
-def HexBytes(bytes):
-    return ' '.join('{:02x}'.format(b) for b in bytes)
-
-# NOTE: license_notify can use fix="ret" !
+# NOTE: license_notify was said to use fix="ret0" !
 class Sigs:
-    Sig = collections.namedtuple('Sig', 'name pattern is_ref offset fix', defaults=('', '', False, 0, 'nop'))
+    Sig = collections.namedtuple('Sig', 'name reghex is_ref fix', defaults=('', '', False, 'nop')) # reghex is regex with hex bytes
     st_linux_sigs = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret0"),
-        Sig(name="server_validate", pattern="55 ? ? ? ? ? ? ? ? ? ? ?", fix="ret1"),
-        Sig(name="license_notify", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret0"),
-        Sig(name="crash_reporter", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret"),
-        Sig(name="invalidate1", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ?"),
-        Sig(name="invalidate2", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . . . . . .", is_ref=True, fix="ret0"),
+        Sig(name="server_validate", reghex="55 . . . . . . . . . . .", fix="ret1"),
+        Sig(name="license_notify", reghex="41 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="invalidate1", reghex="E8 . . . . . . . . . . . ."),
+        Sig(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . ."),
     ]
     st_macos_sigs = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret0"),
-        Sig(name="server_validate", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret1"),
-        Sig(name="license_notify", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret0"),
-        Sig(name="crash_reporter", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret"),
-        Sig(name="invalidate1", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ? ?"),
-        Sig(name="invalidate2", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . . . . . .", is_ref=True, fix="ret0"),
+        Sig(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . .", fix="ret1"),
+        Sig(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="invalidate1", reghex="E8 . . . . . . . . . . . . . ."),
+        Sig(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . . . ."),
     ]
     st_wind_sigs = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret0"),
-        Sig(name="server_validate", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret1"),
-        Sig(name="license_notify", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret0"),
-        Sig(name="crash_reporter", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret"),
-    ]
-    st_wind_sigs_dev = [
-        Sig(name="invalidate1", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", offset=6),
-        Sig(name="invalidate2", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", offset=6),
-    ]
-    st_wind_sigs_stable = [
-        Sig(name="invalidate1", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ?", offset=6),
-        Sig(name="invalidate2", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ?"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . . . . . .", is_ref=True, fix="ret0"),
+        Sig(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret1"),
+        Sig(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="crash_reporter", reghex="41 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="invalidate1", reghex="(?<= . . . . . . ) E8 . . . . (48|49) . ."), # 48 for dev, 49 for stable
+        Sig(name="invalidate2", reghex="(?<= . . . . . . ) E8 . . . . . . . . . (48|4C) . . ."), # 48 for dev, 4C for stable
     ]
     sm_linux_sigs = [
-        Sig(name="server_validate", pattern="55 ? ? ? ? ? ? ? ? ? ? ?", fix="ret1"),
-        Sig(name="license_notify", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret0"),
-        Sig(name="crash_reporter", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret"),
-        Sig(name="invalidate1", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ?"),
-        Sig(name="invalidate2", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?"),
+        Sig(name="server_validate", reghex="55 . . . . . . . . . . .", fix="ret1"),
+        Sig(name="license_notify", reghex="41 . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="invalidate1", reghex="E8 . . . . . . . . . . . ."),
+        Sig(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . ."),
     ]
     sm_linux_sigs_stable = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret281"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . . . .", is_ref=True, fix="ret281"),
     ]
     sm_linux_sigs_dev = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret1"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . .", is_ref=True, fix="ret1"),
     ]
     sm_macos_sigs = [
-        Sig(name="server_validate", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret1"),
-        Sig(name="license_notify", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret0"),
-        Sig(name="crash_reporter", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret"),
-        Sig(name="invalidate1", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ? ?"),
-        Sig(name="invalidate2", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?"),
+        Sig(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . .", fix="ret1"),
+        Sig(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="invalidate1", reghex="E8 . . . . . . . . . . . . . ."),
+        Sig(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . . . ."),
     ]
     sm_macos_sigs_stable = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret281"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . . . .", is_ref=True, fix="ret281"),
     ]
     sm_macos_sigs_dev = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret1"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . .", is_ref=True, fix="ret1"),
     ]
     sm_wind_sigs = [
-        Sig(name="server_validate", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret1"),
-        Sig(name="license_notify", pattern="55 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret0"),
-        Sig(name="crash_reporter", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", fix="ret"),
-        Sig(name="invalidate1", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", offset=6),
-        Sig(name="invalidate2", pattern="41 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?", offset=6),
+        Sig(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret1"),
+        Sig(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="crash_reporter", reghex="41 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", fix="ret"),
+        Sig(name="invalidate1", reghex="(?<= . . . . . . ) E8 . . . . . . . . . ."),
+        Sig(name="invalidate2", reghex="(?<= . . . . . . ) E8 . . . . . . . . . . ."),
     ]
     sm_wind_sigs_stable = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret281"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . . . .", is_ref=True, fix="ret281"),
     ]
     sm_wind_sigs_dev = [
-        Sig(name="license_check", pattern="E8 ? ? ? ? ? ? ? ? ? ? ? ? ? ?", is_ref=True, fix="ret1"),
+        Sig(name="license_check", reghex="E8 . . . . . . . . . . . . . .", is_ref=True, fix="ret1"),
     ]
-    SIGS = dict(
-        md5_4b9e87d1547a4fc9e47d6a6d8dc5e381 = dict(app="SublimeText", version="4113", os="windows", sigs=st_wind_sigs + st_wind_sigs_stable),
-        md5_7be878dce68c856b4bf3045e18f08015 = dict(app="SublimeText", version="4113", os="macos", sigs=st_macos_sigs),
-        md5_ff083966171185d01cb5f7f3721f1b95 = dict(app="SublimeText", version="4113", os="linux", sigs=st_linux_sigs),
-        md5_2e3bbf78ed585983d04ad2c1cf123924 = dict(app="SublimeText", version="4114", os="windows", sigs=st_wind_sigs + st_wind_sigs_dev),
-        md5_4f204e9d4e466d4a628f448d07009189 = dict(app="SublimeText", version="4114", os="macos", sigs=st_macos_sigs),
-        md5_ca6ba5ac190184b20a02a0b0b380d83a = dict(app="SublimeText", version="4114", os="linux", sigs=st_linux_sigs),
-        md5_d9baa87dba4655d3a4a3c878cecb6c5a = dict(app="SublimeMerge", version="2058", os="windows", sigs=sm_wind_sigs + sm_wind_sigs_dev),
-        md5_46e2523e809c682e4445e201ba39c29a = dict(app="SublimeMerge", version="2058", os="macos", sigs=sm_macos_sigs + sm_macos_sigs_dev),
-        md5_c3563e10088ad9e6f7407399c04fc877 = dict(app="SublimeMerge", version="2058", os="linux", sigs=sm_linux_sigs + sm_linux_sigs_dev),
-        md5_29a9f8bbf4f4958cbf5e46922487681d = dict(app="SublimeMerge", version="2059", os="windows", sigs=sm_wind_sigs + sm_wind_sigs_stable),
-        md5_c38ff301ddca0e2e8f84e76f6e25ca4b = dict(app="SublimeMerge", version="2059", os="macos", sigs=sm_macos_sigs + sm_macos_sigs_stable),
-        md5_43e900a19926409edf6bd8ba8709c633 = dict(app="SublimeMerge", version="2059", os="linux", sigs=sm_linux_sigs + sm_linux_sigs_stable),
+    tagged_sigs = [
+        dict(tags=dict(app="SublimeText", channel="dev", os="windows"), sigs=st_wind_sigs),
+        dict(tags=dict(app="SublimeText", channel="dev", os="macos"), sigs=st_macos_sigs),
+        dict(tags=dict(app="SublimeText", channel="dev", os="linux"), sigs=st_linux_sigs),
+        dict(tags=dict(app="SublimeText", channel="stable", os="windows"), sigs=st_wind_sigs),
+        dict(tags=dict(app="SublimeText", channel="stable", os="macos"), sigs=st_macos_sigs),
+        dict(tags=dict(app="SublimeText", channel="stable", os="linux"), sigs=st_linux_sigs),
+        dict(tags=dict(app="SublimeMerge", channel="dev", os="windows"), sigs=sm_wind_sigs_dev + sm_wind_sigs),
+        dict(tags=dict(app="SublimeMerge", channel="dev", os="macos"), sigs=sm_macos_sigs_dev + sm_macos_sigs),
+        dict(tags=dict(app="SublimeMerge", channel="dev", os="linux"), sigs=sm_linux_sigs_dev + sm_linux_sigs),
+        dict(tags=dict(app="SublimeMerge", channel="stable", os="windows"), sigs=sm_wind_sigs_stable + sm_wind_sigs),
+        dict(tags=dict(app="SublimeMerge", channel="stable", os="macos"), sigs=sm_macos_sigs_stable + sm_macos_sigs),
+        dict(tags=dict(app="SublimeMerge", channel="stable", os="linux"), sigs=sm_linux_sigs_stable + sm_linux_sigs),
+    ]
+    detects = dict(
+        app=[
+            Sig(name="SublimeText", reghex=r"Thank\ you\ for\ purchasing\ Sublime\ Text!"), # Thanks for trying out Sublime Text.
+            Sig(name="SublimeMerge", reghex=r"Thanks\ for\ purchasing,\ enjoy\ Sublime\ Merge!"), # Thanks for trying out Sublime Merge.
+        ],
+        channel=[
+            Sig(name="dev", reghex=r"/dev_update_check"),
+            Sig(name="stable", reghex=r"/stable_update_check"),
+        ],
+        os=[
+            Sig(name="windows", reghex="^ 4D 5A"), # "MZ"
+            Sig(name="linux", reghex="^ 7F 45 4C 46"), # "\x7F" "ELF"
+            Sig(name="macos", reghex="^ CA FE BA BE"),
+        ],
     )
 
-    @classmethod
-    def load(self, data):
-        md5hash = hashlib.md5(data).hexdigest()
-        return self.SIGS["md5_" + md5hash]
+    def Load(self, data):
+        detected = {}
+        for tag, sigs in self.detects.items():
+            detected[tag] = next((sig.name for sig in sigs if FindRegHex(sig, data)), None)
+        print("[+] Detected tags: {}\n".format(detected))
+        for item in self.tagged_sigs:
+            if item['tags'] == detected: return item['sigs']
+        exit("[!] Can not find sigs for target file")
 
 def main():
     print(credits)
     target_file = input("Enter path to target file: ")
     target = File(target_file)
-    sigs = target.loadSigs()
-    for sig in sigs:
-        target.patch(sig)
+    target.patch()
     target.save(target_file)
 
 if __name__ == "__main__":
