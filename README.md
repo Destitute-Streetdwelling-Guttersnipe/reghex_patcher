@@ -1,4 +1,4 @@
-# reghex_x64_patcher
+# reghex_patcher
 
 A patcher working on hex bytes with support for x64 CALL instruction
 
@@ -14,6 +14,11 @@ A patcher working on hex bytes with support for x64 CALL instruction
   - generic detection of app, OS ... using lists of `reghex`
   - compute count of NOP bytes based on pre-defined instruction lengths
   - compute referenced offset based on pre-defined instruction lengths
+- `reghex_patcher` (in branch `reghex`) improve support for multiple architectures
+  - remove computation for x64 architecture (for referenced offset, count of NOP bytes)
+  - use regex look-ahead intead of pre-defined instruction lengths (for computation of referenced offset)
+  - use pre-defined patch bytes intead of computation for count of NOP bytes
+  - better detection of architecture, app, OS ... using 1 list of `reghex`
 
 # what is reghex
 
@@ -22,3 +27,8 @@ A patcher working on hex bytes with support for x64 CALL instruction
 
 - `reghex` should be converted to regex by escaping hex bytes, and then used in verbose mode (with flag X)
 - unescaped spaces are ignored in `reghex` as well as in regex
+
+# credits
+
+- @leogx9r for signatures and patching logic
+- @rainbowpigeon for the first version of sublime-text-4-patcher
