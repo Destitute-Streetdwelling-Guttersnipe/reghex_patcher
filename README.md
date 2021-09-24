@@ -28,6 +28,12 @@ A patcher working on hex bytes with support for x64 CALL instruction
 - `reghex` should be converted to regex by escaping hex bytes, and then used in verbose mode (with flag X)
 - unescaped spaces are ignored in `reghex` as well as in regex
 
+# usage
+
+- you must provide list of Fix in class Fixes
+- example: `Fix(name="hotfix", reghex="CA FE BA BE", patch="FA CE")` will replace hex bytes `CA FE` with `FA CE`
+- there are some pre-defined patches: `nop5`, `ret`, `ret0`, `ret1` ...
+
 # credits
 
 - @leogx9r for signatures and patching logic
