@@ -108,12 +108,9 @@ class Fixes:
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . . .", patch=ret1, is_ref=True),
     ]
     tagged_fixes = [
-        (dict(arch=b"x64", app="SublimeText" , channel=b"dev"   , os=b"windows"), st_wind_fixes ),
-        (dict(arch=b"x64", app="SublimeText" , channel=b"dev"   , os=b"osx"    ), st_macos_fixes),
-        (dict(arch=b"x64", app="SublimeText" , channel=b"dev"   , os=b"linux"  ), st_linux_fixes),
-        (dict(arch=b"x64", app="SublimeText" , channel=b"stable", os=b"windows"), st_wind_fixes ),
-        (dict(arch=b"x64", app="SublimeText" , channel=b"stable", os=b"osx"    ), st_macos_fixes),
-        (dict(arch=b"x64", app="SublimeText" , channel=b"stable", os=b"linux"  ), st_linux_fixes),
+        (dict(arch=b"x64", app="SublimeText" ,                    os=b"windows"), st_wind_fixes ),
+        (dict(arch=b"x64", app="SublimeText" ,                    os=b"osx"    ), st_macos_fixes),
+        (dict(arch=b"x64", app="SublimeText" ,                    os=b"linux"  ), st_linux_fixes),
         (dict(arch=b"x64", app="SublimeMerge", channel=b"dev"   , os=b"windows"), sm_wind_fixes_dev     + sm_wind_fixes ),
         (dict(arch=b"x64", app="SublimeMerge", channel=b"dev"   , os=b"osx"    ), sm_macos_fixes_dev    + sm_macos_fixes),
         (dict(arch=b"x64", app="SublimeMerge", channel=b"dev"   , os=b"linux"  ), sm_linux_fixes_dev    + sm_linux_fixes),
@@ -122,7 +119,7 @@ class Fixes:
         (dict(arch=b"x64", app="SublimeMerge", channel=b"stable", os=b"linux"  ), sm_linux_fixes_stable + sm_linux_fixes),
     ]
     detects = [
-        Fix(name="SublimeText", reghex=r"/updates/4/(?P<channel>\w+)_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
+        Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
         Fix(name="SublimeMerge", reghex=r"/updates/(?P<channel>\w+)_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
     ]
 
