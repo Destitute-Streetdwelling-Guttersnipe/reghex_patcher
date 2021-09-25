@@ -108,15 +108,15 @@ class Fixes:
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . . .", patch=ret1, is_ref=True),
     ]
     tagged_fixes = [
-        (dict(arch=b"x64", app="SublimeText" ,                    os=b"windows"), st_wind_fixes ),
-        (dict(arch=b"x64", app="SublimeText" ,                    os=b"osx"    ), st_macos_fixes),
-        (dict(arch=b"x64", app="SublimeText" ,                    os=b"linux"  ), st_linux_fixes),
-        (dict(arch=b"x64", app="SublimeMerge", channel=b"dev"   , os=b"windows"), sm_wind_fixes_dev     + sm_wind_fixes ),
-        (dict(arch=b"x64", app="SublimeMerge", channel=b"dev"   , os=b"osx"    ), sm_macos_fixes_dev    + sm_macos_fixes),
-        (dict(arch=b"x64", app="SublimeMerge", channel=b"dev"   , os=b"linux"  ), sm_linux_fixes_dev    + sm_linux_fixes),
-        (dict(arch=b"x64", app="SublimeMerge", channel=b"stable", os=b"windows"), sm_wind_fixes_stable  + sm_wind_fixes ),
-        (dict(arch=b"x64", app="SublimeMerge", channel=b"stable", os=b"osx"    ), sm_macos_fixes_stable + sm_macos_fixes),
-        (dict(arch=b"x64", app="SublimeMerge", channel=b"stable", os=b"linux"  ), sm_linux_fixes_stable + sm_linux_fixes),
+        ([b"x64", "SublimeText" ,            b"windows"], st_wind_fixes ),
+        ([b"x64", "SublimeText" ,            b"osx"    ], st_macos_fixes),
+        ([b"x64", "SublimeText" ,            b"linux"  ], st_linux_fixes),
+        ([b"x64", "SublimeMerge", b"dev"   , b"windows"], sm_wind_fixes_dev     + sm_wind_fixes ),
+        ([b"x64", "SublimeMerge", b"dev"   , b"osx"    ], sm_macos_fixes_dev    + sm_macos_fixes),
+        ([b"x64", "SublimeMerge", b"dev"   , b"linux"  ], sm_linux_fixes_dev    + sm_linux_fixes),
+        ([b"x64", "SublimeMerge", b"stable", b"windows"], sm_wind_fixes_stable  + sm_wind_fixes ),
+        ([b"x64", "SublimeMerge", b"stable", b"osx"    ], sm_macos_fixes_stable + sm_macos_fixes),
+        ([b"x64", "SublimeMerge", b"stable", b"linux"  ], sm_linux_fixes_stable + sm_linux_fixes),
     ]
     detects = [
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
@@ -126,10 +126,10 @@ class Fixes:
     def Load(self, data):
         for fix in self.detects:
             m = FindRegHex(fix, data)
-            if m: detected = { "app": fix.name, **m.groupdict() }
+            if m: detected = set([ fix.name, *m.groups() ])
         print(f"[+] Detected tags: {detected}\n")
         for tags, fixes in self.tagged_fixes:
-            if tags == detected: return fixes
+            if set(tags) == detected: return fixes
         exit("[!] Can not find fixes for target file")
 
 def main():
