@@ -124,9 +124,10 @@ class Fixes:
     ]
 
     def Load(self, data):
+        detected = set()
         for fix in self.detects:
             m = FindRegHex(fix, data)
-            if m: detected = set([ fix.name, *m.groups() ])
+            if m: detected |= set([ fix.name, *m.groups() ])
         print(f"[+] Detected tags: {detected}\n")
         for tags, fixes in self.tagged_fixes:
             if set(tags) == detected: return fixes
