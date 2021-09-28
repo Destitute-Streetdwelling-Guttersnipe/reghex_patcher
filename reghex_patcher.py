@@ -74,12 +74,8 @@ class Fixes:
         Fix(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="invalidate1", reghex="E8 . . . . . . . . . . . ."),
         Fix(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . ."),
-    ]
-    sm_linux_fixes_stable = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . .", patch=ret281, is_ref=True),
-    ]
-    sm_linux_fixes_dev = [
-        Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . .", patch=ret1, is_ref=True),
+        # Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . .", patch=ret1, is_ref=True), # for SM 2058
     ]
     sm_macos_fixes = [
         Fix(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . .", patch=ret1),
@@ -87,12 +83,8 @@ class Fixes:
         Fix(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="invalidate1", reghex="E8 . . . . . . . . . . . . . ."),
         Fix(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . . . ."),
-    ]
-    sm_macos_fixes_stable = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . .", patch=ret281, is_ref=True),
-    ]
-    sm_macos_fixes_dev = [
-        Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . .", patch=ret1, is_ref=True),
+        # Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . .", patch=ret1, is_ref=True), # for SM 2058
     ]
     sm_wind_fixes = [
         Fix(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret1),
@@ -100,27 +92,20 @@ class Fixes:
         Fix(name="crash_reporter", reghex="41 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="invalidate1", reghex="(?<= . . . . . . ) E8 . . . . . . . . . ."),
         Fix(name="invalidate2", reghex="(?<= . . . . . . ) E8 . . . . . . . . . . ."),
-    ]
-    sm_wind_fixes_stable = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . .", patch=ret281, is_ref=True),
-    ]
-    sm_wind_fixes_dev = [
-        Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . . .", patch=ret1, is_ref=True),
+        # Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . . .", patch=ret1, is_ref=True), # for SM 2058
     ]
     tagged_fixes = [
         ([b"x64", "SublimeText" ,            b"windows"], st_wind_fixes ),
         ([b"x64", "SublimeText" ,            b"osx"    ], st_macos_fixes),
         ([b"x64", "SublimeText" ,            b"linux"  ], st_linux_fixes),
-        ([b"x64", "SublimeMerge", b"dev"   , b"windows"], sm_wind_fixes_dev     + sm_wind_fixes ),
-        ([b"x64", "SublimeMerge", b"dev"   , b"osx"    ], sm_macos_fixes_dev    + sm_macos_fixes),
-        ([b"x64", "SublimeMerge", b"dev"   , b"linux"  ], sm_linux_fixes_dev    + sm_linux_fixes),
-        ([b"x64", "SublimeMerge", b"stable", b"windows"], sm_wind_fixes_stable  + sm_wind_fixes ),
-        ([b"x64", "SublimeMerge", b"stable", b"osx"    ], sm_macos_fixes_stable + sm_macos_fixes),
-        ([b"x64", "SublimeMerge", b"stable", b"linux"  ], sm_linux_fixes_stable + sm_linux_fixes),
+        ([b"x64", "SublimeMerge",            b"windows"], sm_wind_fixes ),
+        ([b"x64", "SublimeMerge",            b"osx"    ], sm_macos_fixes),
+        ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
     ]
     detects = [
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
-        Fix(name="SublimeMerge", reghex=r"/updates/(?P<channel>\w+)_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
+        Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
     ]
 
     def Load(self, data):
