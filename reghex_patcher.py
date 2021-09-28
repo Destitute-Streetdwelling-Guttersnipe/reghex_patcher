@@ -29,11 +29,16 @@ def RelativeOffset(offset, data):
     return (offset + 4 + relative_address) & 0xFFFFFFFF
 
 class Fixes:
+    # for x64 CPU
     nop5 = "90" * 5 # nop over E8 . . . . (call [dword])
     ret = "C3" # ret
     ret0 = "48 31 C0 C3" # xor rax, rax; ret
     ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
     ret281 = "48 C7 C0 19 01 00 00 C3" # mov rax, 281; ret
+    # for ARM64 CPU
+    _ret = "C0 03 5F D6" # ret
+    _ret0 = "E0 03 1F AA C0 03 5F D6" # mov x0, xzr; ret
+    _nop = "1F 20 03 D5" # nop
 
     class Fix:
         nop5 = "90" * 5 # nop over E8 . . . . (call [dword])
@@ -42,7 +47,7 @@ class Fixes:
             self.reghex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), encoding='utf-8') # escape hex bytes
             self.is_ref = is_ref
             self.patch = bytes.fromhex(patch)
-    # NOTE: license_notify was said to use patch=ret0 !
+
     st_linux_fixes = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . .", patch=ret0, is_ref=True),
         Fix(name="server_validate", reghex="55 . . . . . . . . . . .", patch=ret1),
@@ -58,6 +63,14 @@ class Fixes:
         Fix(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="blacklist_check", reghex="E8 . . . . . . . . . . . . . ."),
         Fix(name="license_recheck", reghex="E8 . . . . . . . . . . . . . . . . . ."),
+    ]
+    st_macos_fixes_arm64 = [
+        Fix(name="license_check", reghex=". . . . . . . .", patch=_ret0),
+        Fix(name="server_validate", reghex=". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=_ret),
+        Fix(name="license_notify", reghex=". . . . . . . . . . . . . . . . . . . . . . . .", patch=_ret),
+        Fix(name="crash_reporter", reghex=". . . . . . . . . . . . . . . . . . . . . . . .", patch=_ret),
+        Fix(name="blacklist_check", reghex=". . . . . . . . . . . . . . . . . . . .", patch=_nop),
+        Fix(name="license_recheck", reghex=". . . . . . . . . . . . . . . . . . . .", patch=_nop),
     ]
     st_wind_fixes = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . .", patch=ret0, is_ref=True),
@@ -96,15 +109,17 @@ class Fixes:
     ]
     tagged_fixes = [
         ([b"x64", "SublimeText" ,            b"windows"], st_wind_fixes ),
-        ([b"x64", "SublimeText" ,            b"osx"    ], st_macos_fixes),
+        ([b"x64", "SublimeText" , b"arm64",  b"osx"    ], st_macos_fixes + st_macos_fixes_arm64),
         ([b"x64", "SublimeText" ,            b"linux"  ], st_linux_fixes),
         ([b"x64", "SublimeMerge",            b"windows"], sm_wind_fixes ),
         ([b"x64", "SublimeMerge",            b"osx"    ], sm_macos_fixes),
         ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
     ]
     detects = [
-        Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
-        Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(?P<os>\w+)&arch=(?P<arch>\w+)"),
+        Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
+        Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(arm64)"),
+        Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
+        Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(arm64)"),
     ]
 
     def Load(self, data):
