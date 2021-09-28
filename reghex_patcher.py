@@ -13,7 +13,7 @@ def PatchFile(input_file):
 def FindRegHex(fix, data):
     matches = list(re.finditer(fix.reghex, data, re.DOTALL | re.VERBOSE))[:10] # only 10 matches
     if len(matches) == 0: return None
-    print("[-] Found at {}: pattern {}".format(','.join([hex(m.start()) for m in matches]), fix.name))
+    for m in matches: print("[-] Found at {}: pattern {}".format(hex(m.start()), fix.name))
     return matches[0] 
 
 def Patch(data):
