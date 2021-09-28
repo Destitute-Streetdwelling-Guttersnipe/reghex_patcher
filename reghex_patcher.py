@@ -49,31 +49,31 @@ class Fixes:
         Fix(name="server_validate", reghex="55 . . . . . . . . . . .", patch=ret1),
         Fix(name="license_notify", reghex="41 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
-        Fix(name="invalidate1", reghex="E8 . . . . . . . . . . . ."),
-        Fix(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . ."),
+        Fix(name="blacklist_check", reghex="E8 . . . . . . . . . . . ."),
+        Fix(name="license_recheck", reghex="E8 . . . . . . . . . . . . . . . ."),
     ]
     st_macos_fixes = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . .", patch=ret0, is_ref=True),
         Fix(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . .", patch=ret1),
         Fix(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
-        Fix(name="invalidate1", reghex="E8 . . . . . . . . . . . . . ."),
-        Fix(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . . . ."),
+        Fix(name="blacklist_check", reghex="E8 . . . . . . . . . . . . . ."),
+        Fix(name="license_recheck", reghex="E8 . . . . . . . . . . . . . . . . . ."),
     ]
     st_wind_fixes = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . .", patch=ret0, is_ref=True),
         Fix(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret1),
         Fix(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="crash_reporter", reghex="41 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
-        Fix(name="invalidate1", reghex="(?<= . . . . . . ) E8 . . . . (48|49) . ."), # 48 for dev, 49 for stable
-        Fix(name="invalidate2", reghex="(?<= . . . . . . ) E8 . . . . . . . . . (48|4C) . . ."), # 48 for dev, 4C for stable
+        Fix(name="blacklist_check", reghex="(?<= . . . . . . ) E8 . . . . (48|49) . ."), # 48 for dev, 49 for stable
+        Fix(name="license_recheck", reghex="(?<= . . . . . . ) E8 . . . . . . . . . (48|4C) . . ."), # 48 for dev, 4C for stable
     ]
     sm_linux_fixes = [
         Fix(name="server_validate", reghex="55 . . . . . . . . . . .", patch=ret1),
         Fix(name="license_notify", reghex="41 . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
-        Fix(name="invalidate1", reghex="E8 . . . . . . . . . . . ."),
-        Fix(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . ."),
+        Fix(name="blacklist_check", reghex="E8 . . . . . . . . . . . ."),
+        Fix(name="license_recheck", reghex="E8 . . . . . . . . . . . . . . . ."),
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . .", patch=ret281, is_ref=True),
         # Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . .", patch=ret1, is_ref=True), # for SM 2058
     ]
@@ -81,8 +81,8 @@ class Fixes:
         Fix(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . .", patch=ret1),
         Fix(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="crash_reporter", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
-        Fix(name="invalidate1", reghex="E8 . . . . . . . . . . . . . ."),
-        Fix(name="invalidate2", reghex="E8 . . . . . . . . . . . . . . . . . ."),
+        Fix(name="blacklist_check", reghex="E8 . . . . . . . . . . . . . ."),
+        Fix(name="license_recheck", reghex="E8 . . . . . . . . . . . . . . . . . ."),
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . .", patch=ret281, is_ref=True),
         # Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . .", patch=ret1, is_ref=True), # for SM 2058
     ]
@@ -90,8 +90,8 @@ class Fixes:
         Fix(name="server_validate", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret1),
         Fix(name="license_notify", reghex="55 . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
         Fix(name="crash_reporter", reghex="41 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .", patch=ret),
-        Fix(name="invalidate1", reghex="(?<= . . . . . . ) E8 . . . . . . . . . ."),
-        Fix(name="invalidate2", reghex="(?<= . . . . . . ) E8 . . . . . . . . . . ."),
+        Fix(name="blacklist_check", reghex="(?<= . . . . . . ) E8 . . . . . . . . . ."),
+        Fix(name="license_recheck", reghex="(?<= . . . . . . ) E8 . . . . . . . . . . ."),
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . .", patch=ret281, is_ref=True),
         # Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . . .", patch=ret1, is_ref=True), # for SM 2058
     ]
