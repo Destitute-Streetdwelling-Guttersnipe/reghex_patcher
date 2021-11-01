@@ -10,15 +10,15 @@ def PatchFile(input_file):
        file.write(data)
     print(f"[+] Patched file saved to {input_file}")
 
-def FindRegHex(fix, data):
+def FindRegHex(fix, data, showMatchedText = False):
     matches = list(re.finditer(fix.reghex, data, re.DOTALL | re.VERBOSE))[:10] # only 10 matches
-    for m in matches: print("[-] Found at {}: pattern {}".format(hex(m.start()), fix.name))
+    for m in matches: print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0).hex(' ') if showMatchedText else ''))
     return matches[0] if len(matches) > 0 else None
 
 def Patch(data):
     for fix in Fixes().Load(data):
         match = FindRegHex(fix, data)
-        if not match: exit("[!] Can not find pattern: {} '{}'".format(fix.name, fix.reghex))
+        if not match: exit("[!] Can not find pattern: {} {}".format(fix.name, fix.reghex))
         offset = match.start()
         if fix.is_ref: offset = RelativeOffset(offset, data)
         print("[+] Patch at {}: {}\n".format(hex(offset), fix.patch.hex(' ')))
@@ -125,7 +125,7 @@ class Fixes:
     def Load(self, data):
         detected = set()
         for fix in self.detects:
-            m = FindRegHex(fix, data)
+            m = FindRegHex(fix, data, True)
             if m: detected |= set([ fix.name, *m.groups() ])
         print(f"[+] Detected tags: {detected}\n")
         for tags, fixes in self.tagged_fixes:
