@@ -119,19 +119,16 @@ class Fixes:
         ([b"x64", "SublimeMerge",            b"windows"], sm_wind_fixes ),
         ([b"x64", "SublimeMerge",            b"osx"    ], sm_macos_fixes),
         ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
-        ([b"x64", "SublimeText" ,           "blacklist"], st_blacklist_fixes ),
-        ([b"x64", "SublimeText" , b"arm64", "blacklist"], st_blacklist_fixes ),
+        ([        "SublimeText" ,                      ], st_blacklist_fixes ),
+        ([        "SublimeMerge",                      ], st_blacklist_fixes ),
     ]
     detects = [
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(arm64)"),
         Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
         Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(arm64)"),
-        # Fix(name="blacklist", reghex="97 94 0D 00"), # a blacklisted license
-        # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=(x64)"),
-        # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=(arm64)"),
-        # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=(x64)"),
-        # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=(arm64)"),
+        # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
+        # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
     ]
 
     def Load(self, data):
