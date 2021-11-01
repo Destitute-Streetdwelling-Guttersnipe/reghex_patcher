@@ -107,6 +107,10 @@ class Fixes:
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . .", patch=ret281, is_ref=True),
         # Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . . .", patch=ret1, is_ref=True), # for SM 2058
     ]
+    st_blacklist_fixes = [
+        Fix(name="blacklisted_license_of_twitter", reghex="97 94 0D 00", patch="00 00 00 00"),
+        Fix(name="license_server", reghex="license\.sublimehq\.com", patch=b"license.localhost.\x00\x00\x00".hex())
+    ]
     tagged_fixes = [
         ([b"x64", "SublimeText" ,            b"windows"], st_wind_fixes ),
         ([b"x64", "SublimeText" , b"arm64",  b"osx"    ], st_macos_fixes + st_macos_fixes_arm64),
@@ -114,12 +118,19 @@ class Fixes:
         ([b"x64", "SublimeMerge",            b"windows"], sm_wind_fixes ),
         ([b"x64", "SublimeMerge",            b"osx"    ], sm_macos_fixes),
         ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
+        ([b"x64", "SublimeText" ,           "blacklist"], st_blacklist_fixes ),
+        ([b"x64", "SublimeText" , b"arm64", "blacklist"], st_blacklist_fixes + st_blacklist_fixes),
     ]
     detects = [
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(arm64)"),
         Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
         Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(arm64)"),
+        # Fix(name="blacklist", reghex="97 94 0D 00"), # a blacklisted license
+        # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=(x64)"),
+        # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=(arm64)"),
+        # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=(x64)"),
+        # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=(arm64)"),
     ]
 
     def Load(self, data):
