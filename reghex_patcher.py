@@ -13,16 +13,17 @@ def PatchFile(input_file):
 def FindRegHex(fix, data, showMatchedText = False):
     matches = list(re.finditer(fix.reghex, data, re.DOTALL | re.VERBOSE))[:10] # only 10 matches
     for m in matches: print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0) if showMatchedText else ''))
-    return matches[0] if len(matches) > 0 else None
+    return matches
 
 def Patch(data):
     for fix in Fixes().Load(data):
-        match = FindRegHex(fix, data)
-        if not match: exit("[!] Can not find pattern: {} {}".format(fix.name, fix.reghex))
-        offset = match.start()
-        if fix.is_ref: offset = RelativeOffset(offset, data)
-        print("[+] Patch at {}: {}\n".format(hex(offset), fix.patch.hex(' ')))
-        data[offset : offset + len(fix.patch)] = fix.patch
+        matches = FindRegHex(fix, data)
+        for match in matches:
+            offset = match.start()
+            if fix.is_ref: offset = RelativeOffset(offset, data)
+            print("[+] Patch at {}: {}".format(hex(offset), fix.patch.hex(' ')))
+            data[offset : offset + len(fix.patch)] = fix.patch
+        print("[!] Can not find pattern: {} {}\n".format(fix.name, fix.reghex) if len(matches) == 0 else '')
 
 def RelativeOffset(offset, data):
     relative_address = int.from_bytes(data[offset : offset + 4], byteorder='little') # address size is 4 bytes
@@ -119,7 +120,7 @@ class Fixes:
         ([b"x64", "SublimeMerge",            b"osx"    ], sm_macos_fixes),
         ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
         ([b"x64", "SublimeText" ,           "blacklist"], st_blacklist_fixes ),
-        ([b"x64", "SublimeText" , b"arm64", "blacklist"], st_blacklist_fixes + st_blacklist_fixes),
+        ([b"x64", "SublimeText" , b"arm64", "blacklist"], st_blacklist_fixes ),
     ]
     detects = [
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
@@ -136,8 +137,8 @@ class Fixes:
     def Load(self, data):
         detected = set()
         for fix in self.detects:
-            m = FindRegHex(fix, data, True)
-            if m: detected |= set([ fix.name, *m.groups() ])
+            for m in FindRegHex(fix, data, True):
+                detected |= set([ fix.name, *m.groups() ])
         print(f"[+] Detected tags: {detected}\n")
         for tags, fixes in self.tagged_fixes:
             if set(tags) == detected: return fixes
