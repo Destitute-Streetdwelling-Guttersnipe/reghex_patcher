@@ -1,19 +1,20 @@
 credits = "[-] ---- RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
 
-import re
+import re, sys
 
 def main():
     print(credits)
-    target_file = input("Enter path to target file: ")
-    PatchFile(target_file)
+    input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file output_file")
+    output_file = sys.argv[2] if len(sys.argv) > 2 else input_file
+    PatchFile(input_file, output_file)
 
-def PatchFile(input_file):
+def PatchFile(input_file, output_file):
     with open(input_file, 'rb') as file:
         data = bytearray(file.read())
     Patch(data)
-    with open(input_file, "wb") as file:
+    with open(output_file, "wb") as file:
         file.write(data)
-    print(f"[+] Patched file saved to {input_file}")
+    print(f"[+] Patched file saved to {output_file}")
 
 def FindRegHex(fix, data, showMatchedText = False):
     regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", fix.reghex), encoding='utf-8') # escape hex bytes
