@@ -5,8 +5,8 @@ import patches as Fixes
 
 def main():
     print(credits)
-    input_file = sys.argv[1] if len(sys.argv) > 1 else input("Enter path to target file: ")
-    output_file = sys.argv[2] if len(sys.argv) > 2 else (input_file + '_patched')
+    input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file output_file")
+    output_file = sys.argv[2] if len(sys.argv) > 2 else input_file
     PatchFile(input_file, output_file)
 
 def PatchFile(input_file, output_file):
