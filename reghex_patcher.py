@@ -2,6 +2,11 @@ credits = "[-] ---- RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Cred
 
 import re
 
+def main():
+    print(credits)
+    target_file = input("Enter path to target file: ")
+    PatchFile(target_file)
+
 def PatchFile(input_file):
     with open(input_file, 'rb') as file:
         data = bytearray(file.read())
@@ -21,9 +26,9 @@ def Patch(data):
         for match in matches:
             offset = match.start()
             if fix.is_ref: offset = RelativeOffset(offset, data)
-            print("[+] Patch at {}: {}".format(hex(offset), fix.patch.hex(' ')))
+            print(f"[+] Patch at {hex(offset)}: {fix.patch}")
             data[offset : offset + len(fix.patch)] = fix.patch
-        print("[!] Can not find pattern: {} {}\n".format(fix.name, fix.reghex) if len(matches) == 0 else '')
+        print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
 
 def RelativeOffset(offset, data):
     relative_address = int.from_bytes(data[offset : offset + 4], byteorder='little') # address size is 4 bytes
@@ -140,11 +145,6 @@ class Fixes:
         for tags, fixes in self.tagged_fixes:
             if set(tags) == detected: return fixes
         exit("[!] Can not find fixes for target file")
-
-def main():
-    print(credits)
-    target_file = input("Enter path to target file: ")
-    PatchFile(target_file)
 
 if __name__ == "__main__":
     main()
