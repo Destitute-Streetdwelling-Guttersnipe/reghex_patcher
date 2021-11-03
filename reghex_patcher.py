@@ -21,7 +21,7 @@ def FindRegHex(fix, data, showMatchedText = False):
     return matches
 
 def Patch(data):
-    for fix in Fixes().Load(data):
+    for fix in FindFixes(data):
         matches = FindRegHex(fix, data)
         for match in matches:
             offset = match.start()
@@ -127,7 +127,7 @@ class Fixes:
         ([        "SublimeText" ,                      ], st_blacklist_fixes ),
         ([        "SublimeMerge",                      ], st_blacklist_fixes ),
     ]
-    detects = [
+    detections = [
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
         Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(arm64)"),
         Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(x64)"),
@@ -136,15 +136,15 @@ class Fixes:
         # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
     ]
 
-    def Load(self, data):
-        detected = set()
-        for fix in self.detects:
-            for m in FindRegHex(fix, data, True):
-                detected |= set([ fix.name, *m.groups() ])
-        print(f"[+] Detected tags: {detected}\n")
-        for tags, fixes in self.tagged_fixes:
-            if set(tags) == detected: return fixes
-        exit("[!] Can not find fixes for target file")
+def FindFixes(data):
+    detected = set()
+    for fix in Fixes.detections:
+        for m in FindRegHex(fix, data, True):
+            detected |= set([ fix.name, *m.groups() ])
+    print(f"[+] Detected tags: {detected}\n")
+    for tags, fixes in Fixes.tagged_fixes:
+        if set(tags) == detected: return fixes
+    exit("[!] Can not find fixes for target file")
 
 if __name__ == "__main__":
     main()
