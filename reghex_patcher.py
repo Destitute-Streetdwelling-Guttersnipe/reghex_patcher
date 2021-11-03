@@ -16,7 +16,8 @@ def PatchFile(input_file):
     print(f"[+] Patched file saved to {input_file}")
 
 def FindRegHex(fix, data, showMatchedText = False):
-    matches = list(re.finditer(fix.reghex, data, re.DOTALL | re.VERBOSE))[:10] # only 10 matches
+    regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", fix.reghex), encoding='utf-8') # escape hex bytes
+    matches = list(re.finditer(regex, data, re.DOTALL | re.VERBOSE))[:10] # only 10 matches
     for m in matches: print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0) if showMatchedText else ''))
     return matches
 
@@ -27,16 +28,19 @@ def Patch(data):
             offset = match.start()
             if fix.is_ref: offset = RelativeOffset(offset, data)
             print(f"[+] Patch at {hex(offset)}: {fix.patch}")
-            data[offset : offset + len(fix.patch)] = fix.patch
+            patch = bytes.fromhex(fix.patch)
+            data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
 
 def RelativeOffset(offset, data):
     relative_address = int.from_bytes(data[offset : offset + 4], byteorder='little') # address size is 4 bytes
     return (offset + 4 + relative_address) & 0xFFFFFFFF
 
+import collections
+
 class Fixes:
     # for x64 CPU
-    nop5 = "90" * 5 # nop over E8 . . . . (call [dword])
+    nop5 = "90 " * 5 # nop over E8 . . . . (call [dword])
     ret = "C3" # ret
     ret0 = "48 31 C0 C3" # xor rax, rax; ret
     ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
@@ -46,14 +50,8 @@ class Fixes:
     _ret0 = "E0 03 1F AA C0 03 5F D6" # mov x0, xzr; ret
     _nop = "1F 20 03 D5" # nop
 
-    class Fix:
-        nop5 = "90" * 5 # nop over E8 . . . . (call [dword])
-        def __init__(self, name, reghex, patch=nop5, is_ref=False): # reghex is regex with hex bytes
-            self.name = name
-            self.reghex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), encoding='utf-8') # escape hex bytes
-            self.is_ref = is_ref
-            self.patch = bytes.fromhex(patch)
-
+    Fix = collections.namedtuple('Fix', 'name reghex patch is_ref', defaults=('', '', nop5, False)) # reghex is regex with hex bytes
+    # NOTE: server_validate can also be patched with ret
     st_linux_fixes = [
         Fix(name="license_check", reghex="(?<= E8 ) . . . . . . . . . . . . .", patch=ret0, is_ref=True),
         Fix(name="server_validate", reghex="55 . . . . . . . . . . .", patch=ret1),
