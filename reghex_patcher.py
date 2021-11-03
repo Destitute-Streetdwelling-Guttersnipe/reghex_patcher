@@ -12,7 +12,7 @@ def PatchFile(input_file):
         data = bytearray(file.read())
     Patch(data)
     with open(input_file, "wb") as file:
-       file.write(data)
+        file.write(data)
     print(f"[+] Patched file saved to {input_file}")
 
 def FindRegHex(fix, data, showMatchedText = False):
