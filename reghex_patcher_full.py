@@ -19,7 +19,7 @@ def PatchFile(input_file, output_file):
 
 def FindRegHex(fix, data, showMatchedText = False):
     regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", fix.reghex), encoding='utf-8') # escape hex bytes
-    matches = list(re.finditer(regex, data, re.DOTALL | re.VERBOSE))[:10] # only 10 matches
+    matches = list(re.finditer(regex, data, re.DOTALL | re.VERBOSE))[:fix.count or 10] # only 10 matches
     for m in matches: print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0) if showMatchedText else ''))
     return matches
 
