@@ -27,6 +27,10 @@ sm_macos_fixes_arm64 = [
 ]
 st_blacklist_fixes = [
 ]
+st_delay_fixes = [ # extend the delay period
+]
+sm_delay_fixes = [ # extend the delay period
+]
 tagged_fixes = [
     ([b"x64", "SublimeText" ,            b"windows"], st_wind_fixes ),
     ([b"x64", "SublimeText" , b"arm64",  b"osx"    ], st_macos_fixes + st_macos_fixes_arm64),
@@ -34,8 +38,8 @@ tagged_fixes = [
     ([b"x64", "SublimeMerge",            b"windows"], sm_wind_fixes ),
     ([b"x64", "SublimeMerge", b"arm64",  b"osx"    ], sm_macos_fixes + sm_macos_fixes_arm64),
     ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
-    ([        "SublimeText" ,                      ], st_blacklist_fixes ),
-    ([        "SublimeMerge",                      ], st_blacklist_fixes ),
+    ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
+    ([        "SublimeMerge",                      ], st_blacklist_fixes + sm_delay_fixes),
 ]
 detections = [
     Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
