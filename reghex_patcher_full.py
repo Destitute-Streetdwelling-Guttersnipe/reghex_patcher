@@ -77,13 +77,10 @@ def FileInfo(data):
         elf = ELFFile(io.BytesIO(data))
         sections = [(s.header['sh_addr'], s.header['sh_offset']) for s in elf.iter_sections()]
     elif re.search(b"^\xCF\xFA\xED\xFE", data):
-        from macholibre import parse # pip3 install git+https://github.com/aaronst/macholibre.git
-        with open("machO.temp", "wb") as file:
-            file.write(data) # NOTE: should remove file afterwards
-        fileData = parse("machO.temp") # macholibre is very slow
-        for lcs in fileData['macho']['lcs']:
-            if lcs['cmd'] == 'SEGMENT' or lcs['cmd'] == 'SEGMENT_64':
-                sections += [(s['addr'], s['offset']) for s in lcs['sects'] if s['addr'] > 0 and s['offset'] > 0]
+        from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
+        macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
+        sections = [(s.addr, s.offset) for s in macho.get_sections()]
+        # print([f"{s.segname} a:{s.vmaddr:x} o:{s.fileoff:x}" for s in macho.get_segments()])
     else:
         print("[!] Can not read file sections")
     sections = [(s[0], s[1]) for s in sections if s[0] > 0 and s[1] > 0]
