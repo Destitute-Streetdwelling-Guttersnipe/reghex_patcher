@@ -33,10 +33,12 @@ sm_delay_fixes = [ # extend the delay period
 ]
 tagged_fixes = [
     ([b"x64", "SublimeText" ,            b"windows"], st_wind_fixes ),
-    ([b"x64", "SublimeText" , b"arm64",  b"osx"    ], st_macos_fixes + st_macos_fixes_arm64),
+    ([b"x64", "SublimeText" ,            b"osx"    ], st_macos_fixes),
+    ([        "SublimeText" ,  b"arm64", b"osx"    ], st_macos_fixes_arm64),
     ([b"x64", "SublimeText" ,            b"linux"  ], st_linux_fixes),
     ([b"x64", "SublimeMerge",            b"windows"], sm_wind_fixes ),
-    ([b"x64", "SublimeMerge", b"arm64",  b"osx"    ], sm_macos_fixes + sm_macos_fixes_arm64),
+    ([b"x64", "SublimeMerge" ,           b"osx"    ], sm_macos_fixes),
+    ([        "SublimeMerge" , b"arm64", b"osx"    ], sm_macos_fixes_arm64),
     ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
     ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
     ([        "SublimeMerge",                      ], st_blacklist_fixes + sm_delay_fixes),

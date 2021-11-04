@@ -1,10 +1,10 @@
-credits = "[-] ---- RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
+credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
 
 import re, sys
 import patches as Fixes
 
 def main():
-    print(credits)
+    print(f"[-] ---- {credits}\n")
     input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file output_file")
     output_file = sys.argv[2] if len(sys.argv) > 2 else input_file
     PatchFile(input_file, output_file)
@@ -12,7 +12,7 @@ def main():
 def PatchFile(input_file, output_file):
     with open(input_file, 'rb') as file:
         data = bytearray(file.read())
-    Patch(data)
+    SplitFatBinary(data)
     with open(output_file, "wb") as file:
         file.write(data)
     print(f"[+] Patched file saved to {output_file}")
@@ -33,6 +33,7 @@ def Patch(data):
             patch = bytes.fromhex(fix.patch)
             data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
+    return data
 
 def Ref2Offset(offset, data, is_rva):
     # TODO: use byteorder from FileInfo(data)
@@ -53,6 +54,19 @@ def FindFixes(data):
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes
     exit("[!] Can not find fixes for target file")
+
+def SplitFatBinary(data):
+    import struct
+    (magic, num_archs) = struct.unpack(">2L", data[:4*2])
+    if magic == 0xCAFEBABE: # MacOS universal binary
+        header_size = 4*5
+        for i in range(num_archs):
+            header_offset = 4*2 + header_size*i
+            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset:header_offset + header_size])
+            print(f"[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
+            data[offset:offset + size] = Patch(data[offset:offset + size])
+    else:
+        data = Patch(data)
 
 # adapt from https://stackoverflow.com/questions/1988804/what-is-memoization-and-how-can-i-use-it-in-python
 class MemoizeFirstCall:
