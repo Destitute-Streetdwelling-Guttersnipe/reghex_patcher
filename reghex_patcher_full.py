@@ -28,15 +28,21 @@ def Patch(data):
         matches = FindRegHex(fix, data)
         for match in matches:
             offset = match.start()
-            if fix.is_ref: offset = RelativeOffset(offset, data)
+            if fix.is_rva or fix.is_va: offset = Ref2Offset(offset, data, fix.is_rva)
             print(f"[+] Patch at {hex(offset)}: {fix.patch}")
             patch = bytes.fromhex(fix.patch)
             data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
 
-def RelativeOffset(offset, data):
-    relative_address = int.from_bytes(data[offset : offset + 4], byteorder='little') # address size is 4 bytes
-    return (offset + 4 + relative_address) & 0xFFFFFFFF
+def Ref2Offset(offset, data, is_rva):
+    # TODO: use byteorder from FileInfo(data)
+    address = int.from_bytes(data[offset : offset + 4], byteorder='little', signed=True) # address size is 4 bytes
+    sections = FileInfo(data)
+    if is_rva:
+        # return (offset + 4 + address) & 0xFFFFFFFF # NOTE: assume that referenced address is in the same section
+        base = Offset2Address(sections, offset)
+        address = (base + 4 + address)
+    return Address2Offset(sections, address)
 
 def FindFixes(data):
     detected = set()
@@ -47,6 +53,56 @@ def FindFixes(data):
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes
     exit("[!] Can not find fixes for target file")
+
+# adapt from https://stackoverflow.com/questions/1988804/what-is-memoization-and-how-can-i-use-it-in-python
+class MemoizeFirstCall:
+    def __init__(self, f):
+        self.f = f
+        self.memo = None
+    def __call__(self, *args):
+        if not self.memo: self.memo = self.f(*args)
+        return self.memo
+
+@MemoizeFirstCall
+def FileInfo(data):
+    sections = []
+    # print("[-] init FileInfo")
+    if re.search(b"^MZ", data):
+        import pefile
+        pe = pefile.PE(data=data, fast_load=True)
+        sections = [(s.VirtualAddress, s.PointerToRawData) for s in pe.sections]
+    elif re.search(b"^\x7FELF", data):
+        from elftools.elf.elffile import ELFFile # pip3 install pyelftools
+        import io
+        elf = ELFFile(io.BytesIO(data))
+        sections = [(s.header['sh_addr'], s.header['sh_offset']) for s in elf.iter_sections()]
+    elif re.search(b"^\xCF\xFA\xED\xFE", data):
+        from macholibre import parse # pip3 install git+https://github.com/aaronst/macholibre.git
+        with open("machO.temp", "wb") as file:
+            file.write(data) # NOTE: should remove file afterwards
+        fileData = parse("machO.temp") # macholibre is very slow
+        for lcs in fileData['macho']['lcs']:
+            if lcs['cmd'] == 'SEGMENT' or lcs['cmd'] == 'SEGMENT_64':
+                sections += [(s['addr'], s['offset']) for s in lcs['sects'] if s['addr'] > 0 and s['offset'] > 0]
+    else:
+        print("[!] Can not read file sections")
+    sections = [(s[0], s[1]) for s in sections if s[0] > 0 and s[1] > 0]
+    # print("[-] sections(address,offset): " + " ".join([f"(0x{s[0]:x},0x{s[1]:x})" for s in sections]))
+    return sections
+
+def Address2Offset(sections, address):
+    for s_address, s_offset in sorted(sections, key=lambda pair: pair[0], reverse=True): # sorted by address
+        if address >= s_address:
+            return address - s_address + s_offset
+    print(f"[!] Address 0x{address:x} not found in sections")
+    return address
+
+def Offset2Address(sections, offset):
+    for s_address, s_offset in sorted(sections, key=lambda pair: pair[1], reverse=True): # sorted by offset
+        if offset >= s_offset:
+            return offset - s_offset + s_address
+    print(f"[!] Offset 0x{offset:x} not found in sections")
+    return offset
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,7 @@ ret = "C3" # ret
 ret0 = "48 31 C0 C3" # xor rax, rax; ret
 ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
 ret119 = "48 C7 C0 19 01 00 00 C3" # mov rax, 0x119; ret
-Fix = collections.namedtuple('Fix', 'name reghex patch is_ref count', defaults=('', '', nop5, False, None)) # reghex is regex with hex bytes
+Fix = collections.namedtuple('Fix', 'name reghex patch is_rva is_va count', defaults=('', '', nop5, False, False, None)) # reghex is regex with hex bytes
 st_wind_fixes = [
 ]
 st_linux_fixes = [
