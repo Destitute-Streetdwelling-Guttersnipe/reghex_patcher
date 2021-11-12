@@ -2,7 +2,9 @@
 
 import collections
 
+zero4 = "00 " * 4
 # for x64 CPU
+nop = "90"
 nop5 = "90 " * 5 # nop over E8 .{4} (call [dword])
 ret = "C3" # ret
 ret0 = "48 31 C0 C3" # xor rax, rax; ret
