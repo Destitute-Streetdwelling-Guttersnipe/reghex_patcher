@@ -29,17 +29,16 @@ def Patch(data):
         matches = FindRegHex(fix, data)
         for match in matches:
             offset = match.start()
-            if fix.is_rva or fix.is_va or fix.is_pic: offset = Ref2Offset(offset, data, fix.is_rva, fix.is_pic)
+            if fix.is_rva or fix.is_va or fix.is_pic: offset = Ref2Offset(offset, data, sections, fix.is_rva, fix.is_pic)
             print(f"[+] Patch at o:{hex(offset)} a:{hex(Offset2Address(sections, offset))}: {fix.patch}")
             patch = bytes.fromhex(fix.patch)
             data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
     return data
 
-def Ref2Offset(offset, data, is_rva, is_pic):
+def Ref2Offset(offset, data, sections, is_rva, is_pic):
     # TODO: use byteorder from FileInfo(data)
     address = Bytes2Address(data[offset : offset + 4], is_rva, is_pic)
-    sections = FileInfo(data)
     if is_pic or is_rva:
         # return (offset + 4 + address) & 0xFFFFFFFF # NOTE: assume that referenced address is in the same section
         base = Offset2Address(sections, offset)
@@ -78,19 +77,8 @@ def SplitFatBinary(data):
     else:
         data = Patch(data)
 
-# adapt from https://stackoverflow.com/questions/1988804/what-is-memoization-and-how-can-i-use-it-in-python
-class MemoizeFirstCall:
-    def __init__(self, f):
-        self.f = f
-        self.memo = None
-    def __call__(self, *args):
-        if not self.memo: self.memo = self.f(*args)
-        return self.memo
-
-@MemoizeFirstCall
 def FileInfo(data):
     sections = []
-    # print("[-] init FileInfo")
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
