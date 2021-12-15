@@ -29,21 +29,22 @@ def Patch(data):
         matches = FindRegHex(fix, data)
         for match in matches:
             offset = match.start()
-            if fix.is_rva or fix.is_va or fix.is_pic: offset = Ref2Offset(offset, data, sections, fix.is_rva, fix.is_pic)
-            print(f"[+] Patch at o:{hex(offset)} a:{hex(Offset2Address(sections, offset))}: {fix.patch}")
+            address = Offset2Address(sections, offset)
+            if fix.is_rva or fix.is_va or fix.is_pic:
+                address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pic)
+                offset = Address2Offset(sections, address)
+            print(f"[+] Patch at o:{hex(offset)} a:{hex(address)}: {fix.patch}")
             patch = bytes.fromhex(fix.patch)
             data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
     return data
 
-def Ref2Offset(offset, data, sections, is_rva, is_pic):
+def Ref2Address(base, byte_array, is_rva, is_pic):
     # TODO: use byteorder from FileInfo(data)
-    address = Bytes2Address(data[offset : offset + 4], is_rva, is_pic)
+    address = Bytes2Address(byte_array, is_rva, is_pic)
     if is_pic or is_rva:
-        # return (offset + 4 + address) & 0xFFFFFFFF # NOTE: assume that referenced address is in the same section
-        base = Offset2Address(sections, offset)
         address += base
-    return Address2Offset(sections, address)
+    return address
 
 def Bytes2Address(byte_array, is_rva, is_pic):
     if is_pic:
