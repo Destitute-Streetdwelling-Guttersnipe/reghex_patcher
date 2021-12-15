@@ -29,22 +29,31 @@ def Patch(data):
         matches = FindRegHex(fix, data)
         for match in matches:
             offset = match.start()
-            if fix.is_rva or fix.is_va: offset = Ref2Offset(offset, data, fix.is_rva)
+            if fix.is_rva or fix.is_va or fix.is_pic: offset = Ref2Offset(offset, data, fix.is_rva, fix.is_pic)
             print(f"[+] Patch at o:{hex(offset)} a:{hex(Offset2Address(sections, offset))}: {fix.patch}")
             patch = bytes.fromhex(fix.patch)
             data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
     return data
 
-def Ref2Offset(offset, data, is_rva):
+def Ref2Offset(offset, data, is_rva, is_pic):
     # TODO: use byteorder from FileInfo(data)
-    address = int.from_bytes(data[offset : offset + 4], byteorder='little', signed=True) # address size is 4 bytes
+    address = Bytes2Address(data[offset : offset + 4], is_rva, is_pic)
     sections = FileInfo(data)
-    if is_rva:
+    if is_pic or is_rva:
         # return (offset + 4 + address) & 0xFFFFFFFF # NOTE: assume that referenced address is in the same section
         base = Offset2Address(sections, offset)
-        address = (base + 4 + address)
+        address += base
     return Address2Offset(sections, address)
+
+def Bytes2Address(byte_array, is_rva, is_pic):
+    if is_pic:
+        address = int.from_bytes(byte_array, byteorder='little', signed=False) << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
+        if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
+    else:
+        address = int.from_bytes(byte_array, byteorder='little', signed=True) # address size is 4 bytes
+        if is_rva: address += 4 # RVA is based on next instruction (which OFTEN is at the next 4 bytes)
+    return address
 
 def FindFixes(data):
     detected = set()
@@ -92,6 +101,7 @@ def FileInfo(data):
         elf = ELFFile(io.BytesIO(data))
         sections = [(s.header['sh_addr'], s.header['sh_offset']) for s in elf.iter_sections()]
     elif re.search(b"^\xCF\xFA\xED\xFE", data):
+        # with open("macho_executable", "wb") as file: file.write(data)
         from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
         sections = [(s.addr, s.offset) for s in macho.get_sections()]
