@@ -33,7 +33,7 @@ def Patch(data):
             if fix.is_rva or fix.is_va or fix.is_pic:
                 address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pic)
                 offset = Address2Offset(sections, address)
-            print(f"[+] Patch at o:{hex(offset)} a:{hex(address)}: {fix.patch}")
+            print(f"[+] Patch at {hex(offset)} a={hex(address)}: {fix.patch}")
             patch = bytes.fromhex(fix.patch)
             data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
