@@ -41,19 +41,13 @@ def Patch(data):
 
 def Ref2Address(base, byte_array, is_rva, is_pic):
     # TODO: use byteorder from FileInfo(data)
-    address = Bytes2Address(byte_array, is_rva, is_pic)
-    if is_pic or is_rva:
-        address += base
-    return address
-
-def Bytes2Address(byte_array, is_rva, is_pic):
     if is_pic:
         address = int.from_bytes(byte_array, byteorder='little', signed=False) << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
         if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
     else:
         address = int.from_bytes(byte_array, byteorder='little', signed=True) # address size is 4 bytes
         if is_rva: address += 4 # RVA is based on next instruction (which OFTEN is at the next 4 bytes)
-    return address
+    return base + address if (is_rva or is_pic) else address
 
 def FindFixes(data):
     detected = set()
