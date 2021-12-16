@@ -30,8 +30,8 @@ def Patch(data):
         for match in matches:
             offset = match.start()
             address = Offset2Address(sections, offset)
-            if fix.is_rva or fix.is_va or fix.is_pic:
-                address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pic)
+            if fix.is_rva or fix.is_va or fix.is_pcr:
+                address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pcr)
                 offset = Address2Offset(sections, address)
             print(f"[+] Patch at {hex(offset)} a={hex(address)}: {fix.patch}")
             patch = bytes.fromhex(fix.patch)
@@ -39,15 +39,15 @@ def Patch(data):
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
     return data
 
-def Ref2Address(base, byte_array, is_rva, is_pic):
+def Ref2Address(base, byte_array, is_rva, is_pcr):
     # TODO: use byteorder from FileInfo(data)
-    if is_pic:
+    if is_pcr:
         address = int.from_bytes(byte_array, byteorder='little', signed=False) << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
         if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
     else:
         address = int.from_bytes(byte_array, byteorder='little', signed=True) # address size is 4 bytes
         if is_rva: address += 4 # RVA is based on next instruction (which OFTEN is at the next 4 bytes)
-    return base + address if (is_rva or is_pic) else address
+    return base + address if (is_rva or is_pcr) else address
 
 def FindFixes(data):
     detected = set()
