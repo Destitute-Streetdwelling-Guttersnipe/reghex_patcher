@@ -19,21 +19,27 @@ def PatchFile(input_file, output_file):
 
 def FindRegHex(fix, data, showMatchedText = False):
     regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", fix.reghex), encoding='utf-8') # escape hex bytes
-    matches = list(re.finditer(regex, data, re.DOTALL | re.VERBOSE))[:fix.count or 10] # only 10 matches
-    for m in matches: print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0) if showMatchedText else ''))
+    matches = list(re.finditer(regex, data, re.DOTALL | re.VERBOSE))[:fix.count] # only 10 matches
+    for m in matches: print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0))) if showMatchedText else ''
     return matches
 
 def Patch(data):
+    addresses = {}
     sections = FileInfo(data)
     for fix in FindFixes(data):
         matches = FindRegHex(fix, data)
         for match in matches:
             offset = match.start()
             address = Offset2Address(sections, offset)
+            addresses[fix.name] = address
             if fix.is_rva or fix.is_va or fix.is_pcr:
                 address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pcr)
                 offset = Address2Offset(sections, address)
-            print(f"[+] Patch at {hex(offset)} a={hex(address)}: {fix.patch}")
+            if fix.refs:
+                for ref in fix.refs.split(','):
+                    if addresses.get(ref) == address: print(f"[+] Found at {hex(match.start())} a={hex(addresses[fix.name])}: ref to {ref}")
+                continue
+            print(f"[+] Patch at {hex(offset)} a={hex(address)}: {fix.name} {fix.patch}")
             patch = bytes.fromhex(fix.patch)
             data[offset : offset + len(patch)] = patch
         print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
@@ -99,14 +105,14 @@ def Address2Offset(sections, address):
     for s_address, s_offset in sorted(sections, key=lambda pair: pair[0], reverse=True): # sorted by address
         if address >= s_address:
             return address - s_address + s_offset
-    print(f"[!] Address 0x{address:x} not found in sections")
+    # print(f"[!] Address 0x{address:x} not found in sections")
     return address
 
 def Offset2Address(sections, offset):
     for s_address, s_offset in sorted(sections, key=lambda pair: pair[1], reverse=True): # sorted by offset
         if offset >= s_offset:
             return offset - s_offset + s_address
-    print(f"[!] Offset 0x{offset:x} not found in sections")
+    # print(f"[!] Offset 0x{offset:x} not found in sections")
     return offset
 
 if __name__ == "__main__":
