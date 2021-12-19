@@ -32,8 +32,10 @@ st_blacklist_fixes = [
 sm_blacklist_fixes = [
 ]
 st_server_fixes = [ # fix online checks
-    Fix(name="license_ref", reghex=r"(?<= BE|BF ) .{4}", patch="", is_va=True, refs="license_check,license_check_path,license_check_server,license_notification,license_notification_path,update_check_path,update_server", count=None, look_behind="(41 56  53 | 55  41 (56|57) | 55  56  57)"),
-    Fix(name="license_ref", reghex=r"(?<= (48|4C) 8D (0D|05|15|35|3D)) .{4}", patch="", is_rva=True, refs="license_check,license_check_path,license_check_server,license_notification,license_notification_path,update_check_path,update_server", count=None, look_behind="(41 56  53 | 55  41 (56|57) | 55  56  57)"),
+    Fix(name="license_ref", reghex=r"(?<= BE|BF ) .{4}", patch="", is_va=True,
+        look_behind="(41 56  53 | 55 (48 89 E5)?  (53 | 41 56 | 41 57) | (?<! . . 55 | 48 89 E5)  41 57  41 56 | 55  56  57)"),
+    Fix(name="license_ref", reghex=r"(?<= (48|4C) 8D (0D|05|15|35|3D)) .{4}", patch="", is_rva=True,
+        look_behind="(41 56  53 | 55 (48 89 E5)?  (53 | 41 56 | 41 57) | (?<! . . 55 | 48 89 E5)  41 57  41 56 | 55  56  57)"),
 ]
 st_delay_fixes = [ # extend the delay period
 ]

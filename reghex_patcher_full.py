@@ -22,28 +22,27 @@ def FindRegHex(reghex, data, showMatchedText = False):
     return re.finditer(regex, data, re.DOTALL | re.VERBOSE)
 
 def Patch(data, display_offset = 0):
-    addresses = {}
+    refs = {}
     sections = FileInfo(data)
     for fix in FindFixes(data):
         for match in FindRegHex(fix.reghex, data):
-            offset = match.start()
-            address = Offset2Address(sections, offset)
-            addresses[fix.name] = address
+            offset0 = offset = match.start()
+            address0 = address = Offset2Address(sections, offset)
             if fix.is_rva or fix.is_va or fix.is_pcr:
                 address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pcr)
                 offset = Address2Offset(sections, address)
-            if not fix.refs:
+            if not fix.look_behind:
+                refs[address0] = fix.name
                 print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {fix.patch}")
                 patch = bytes.fromhex(fix.patch)
                 data[offset : offset + len(patch)] = patch
             else:
-                for ref in fix.refs.split(','):
-                    if addresses.get(ref) == address:
-                        # print(f"[+] Found at {hex(match.start())} a={hex(addresses[fix.name])}: ref -> {ref}")
-                        for m in FindRegHex(fix.look_behind, data[0 : match.start()]):
-                            offset = m.start()
-                        address = Offset2Address(sections, offset)
-                        print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: look_behind <- {ref} at {hex(match.start() + display_offset)} a={hex(addresses[fix.name])}")
+                if refs.get(address):
+                    ref_info = f"look_behind <- {refs[address]} at {hex(offset0 + display_offset)} a={hex(address0)}"
+                    for m in FindRegHex(fix.look_behind, data[0 : offset0]):
+                        offset = m.start()
+                    address = Offset2Address(sections, offset)
+                    print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: {ref_info}")
         if not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
     return data
 
