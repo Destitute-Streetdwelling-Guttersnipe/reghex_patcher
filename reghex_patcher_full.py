@@ -17,32 +17,34 @@ def PatchFile(input_file, output_file):
         file.write(data)
     print(f"[+] Patched file saved to {output_file}")
 
-def FindRegHex(fix, data, showMatchedText = False):
-    regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", fix.reghex), encoding='utf-8') # escape hex bytes
-    matches = list(re.finditer(regex, data, re.DOTALL | re.VERBOSE))[:fix.count] # only 10 matches
-    for m in matches: print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0))) if showMatchedText else ''
-    return matches
+def FindRegHex(reghex, data, showMatchedText = False):
+    regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), encoding='utf-8') # escape hex bytes
+    return re.finditer(regex, data, re.DOTALL | re.VERBOSE)
 
 def Patch(data):
     addresses = {}
     sections = FileInfo(data)
     for fix in FindFixes(data):
-        matches = FindRegHex(fix, data)
-        for match in matches:
+        for match in FindRegHex(fix.reghex, data):
             offset = match.start()
             address = Offset2Address(sections, offset)
             addresses[fix.name] = address
             if fix.is_rva or fix.is_va or fix.is_pcr:
                 address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pcr)
                 offset = Address2Offset(sections, address)
-            if fix.refs:
+            if not fix.refs:
+                print(f"[+] Patch at {hex(offset)} a={hex(address)}: {fix.name} {fix.patch}")
+                patch = bytes.fromhex(fix.patch)
+                data[offset : offset + len(patch)] = patch
+            else:
                 for ref in fix.refs.split(','):
-                    if addresses.get(ref) == address: print(f"[+] Found at {hex(match.start())} a={hex(addresses[fix.name])}: ref to {ref}")
-                continue
-            print(f"[+] Patch at {hex(offset)} a={hex(address)}: {fix.name} {fix.patch}")
-            patch = bytes.fromhex(fix.patch)
-            data[offset : offset + len(patch)] = patch
-        print(f"[!] Can not find pattern: {fix.name} {fix.reghex}\n" if len(matches) == 0 else '')
+                    if addresses.get(ref) == address:
+                        # print(f"[+] Found at {hex(match.start())} a={hex(addresses[fix.name])}: ref -> {ref}")
+                        for m in FindRegHex(fix.look_behind, data[0 : match.start()]):
+                            offset = m.start()
+                        address = Offset2Address(sections, offset)
+                        print(f"[+] Found at {hex(offset)} a={hex(address)}: look_behind <- {ref} at {hex(match.start())} a={hex(addresses[fix.name])}")
+        if not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
     return data
 
 def Ref2Address(base, byte_array, is_rva, is_pcr):
@@ -58,8 +60,9 @@ def Ref2Address(base, byte_array, is_rva, is_pcr):
 def FindFixes(data):
     detected = set()
     for fix in Fixes.detections:
-        for m in FindRegHex(fix, data, True):
+        for m in FindRegHex(fix.reghex, data, True):
             detected |= set([ fix.name, *m.groups() ])
+            print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0)))
     print(f"[+] Detected tags: {detected}\n")
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes

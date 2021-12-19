@@ -10,7 +10,7 @@ ret = "C3" # ret
 ret0 = "48 31 C0 C3" # xor rax, rax; ret
 ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
 ret119 = "48 C7 C0 19 01 00 00 C3" # mov rax, 0x119; ret
-Fix = collections.namedtuple('Fix', 'name reghex patch is_rva is_va is_pcr refs count', defaults=('', '', nop5, False, False, False, None, 10)) # reghex is regex with hex bytes
+Fix = collections.namedtuple('Fix', 'name reghex patch is_rva is_va is_pcr refs look_behind', defaults=('', '', nop5, False, False, False, None, '')) # reghex is regex with hex bytes
 st_wind_fixes = [
 ]
 st_linux_fixes = [
@@ -31,6 +31,10 @@ st_blacklist_fixes = [
 ]
 sm_blacklist_fixes = [
 ]
+st_server_fixes = [ # fix online checks
+    Fix(name="license_ref", reghex=r"(?<= BE|BF ) .{4}", patch="", is_va=True, refs="license_check,license_check_path,license_check_server,license_notification,license_notification_path,update_check_path,update_server", count=None, look_behind="(41 56  53 | 55  41 (56|57) | 55  56  57)"),
+    Fix(name="license_ref", reghex=r"(?<= (48|4C) 8D (0D|05|15|35|3D)) .{4}", patch="", is_rva=True, refs="license_check,license_check_path,license_check_server,license_notification,license_notification_path,update_check_path,update_server", count=None, look_behind="(41 56  53 | 55  41 (56|57) | 55  56  57)"),
+]
 st_delay_fixes = [ # extend the delay period
 ]
 sm_delay_fixes = [ # extend the delay period
@@ -44,8 +48,10 @@ tagged_fixes = [
     ([b"x64", "SublimeMerge" ,           b"osx"    ], sm_macos_fixes),
     ([        "SublimeMerge" , b"arm64", b"osx"    ], sm_macos_fixes_arm64),
     ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes),
-    ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
-    ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),
+    # ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
+    # ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),
+    ([        "SublimeText" ,                      ], st_server_fixes),
+    ([        "SublimeMerge",                      ], st_server_fixes),
 ]
 detections = [
     # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
