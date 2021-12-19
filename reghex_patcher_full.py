@@ -21,7 +21,7 @@ def FindRegHex(reghex, data, showMatchedText = False):
     regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), encoding='utf-8') # escape hex bytes
     return re.finditer(regex, data, re.DOTALL | re.VERBOSE)
 
-def Patch(data):
+def Patch(data, display_offset = 0):
     addresses = {}
     sections = FileInfo(data)
     for fix in FindFixes(data):
@@ -33,7 +33,7 @@ def Patch(data):
                 address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pcr)
                 offset = Address2Offset(sections, address)
             if not fix.refs:
-                print(f"[+] Patch at {hex(offset)} a={hex(address)}: {fix.name} {fix.patch}")
+                print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {fix.patch}")
                 patch = bytes.fromhex(fix.patch)
                 data[offset : offset + len(patch)] = patch
             else:
@@ -43,7 +43,7 @@ def Patch(data):
                         for m in FindRegHex(fix.look_behind, data[0 : match.start()]):
                             offset = m.start()
                         address = Offset2Address(sections, offset)
-                        print(f"[+] Found at {hex(offset)} a={hex(address)}: look_behind <- {ref} at {hex(match.start())} a={hex(addresses[fix.name])}")
+                        print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: look_behind <- {ref} at {hex(match.start() + display_offset)} a={hex(addresses[fix.name])}")
         if not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
     return data
 
@@ -77,7 +77,7 @@ def SplitFatBinary(data):
             header_offset = 4*2 + header_size*i
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset:header_offset + header_size])
             print(f"[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
-            data[offset:offset + size] = Patch(data[offset:offset + size])
+            data[offset:offset + size] = Patch(data[offset:offset + size], offset)
     else:
         data = Patch(data)
 
