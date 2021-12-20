@@ -40,7 +40,7 @@ def Patch(data, display_offset = 0):
                 if refs.get(address):
                     ref_info = f"look_behind <- {refs[address]} at {hex(offset0 + display_offset)} a={hex(address0)}"
                     for m in FindRegHex(fix.look_behind, data[0 : offset0]):
-                        offset = m.start()
+                        if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                     address = Offset2Address(sections, offset)
                     print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: {ref_info}")
         if not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
