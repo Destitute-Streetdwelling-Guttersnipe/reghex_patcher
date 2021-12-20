@@ -29,7 +29,7 @@ def Patch(data, display_offset = 0):
             offset0 = offset = match.start()
             address0 = address = Offset2Address(sections, offset)
             if fix.is_rva or fix.is_va or fix.is_pcr:
-                address = Ref2Address(address, data[offset : offset + 4], fix.is_rva, fix.is_pcr)
+                address = Ref2Address(address, data, offset, fix.is_rva, fix.is_pcr)
                 offset = Address2Offset(sections, address)
             if not fix.look_behind:
                 refs[address0] = fix.name
@@ -46,12 +46,28 @@ def Patch(data, display_offset = 0):
         if not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
     return data
 
-def Ref2Address(base, byte_array, is_rva, is_pcr):
+def Ref2Address(base, data, offset, is_rva, is_pcr):
     # TODO: use byteorder from FileInfo(data)
-    if is_pcr:
-        address = int.from_bytes(byte_array, byteorder='little', signed=False) << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
-        if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
-    else:
+    byte_array = data[offset : offset+4]
+    byte_array2 = data[offset+4 : offset+8]
+    if is_pcr: # PC relative instructions of arm64
+        if (re.search(b"(\x90|\xB0|\xD0|\xF0)$", byte_array) and re.search(b"(\x91)$", byte_array2)): # ADRP & ADD instructions
+            instr = int.from_bytes(byte_array, byteorder='little', signed=False)
+            immlo = (instr & 0x60000000) >> 29
+            immhi = (instr & 0xffffe0) >> 3
+            value64 = (immlo | immhi) << 12 # PAGE_SIZE = 0x1000 = 4096
+            if value64 >> 33: value64 -= 1 << 34 # extend sign from MSB (bit 33)
+            instr2 = int.from_bytes(byte_array2, byteorder='little', signed=False)
+            imm12 = (instr2 & 0x3ffc00) >> 10
+            if instr2 & 0xc00000: imm12 <<= 12
+            page_address = base >> 12 << 12 # clear 12 LSB
+            return page_address + value64 + imm12
+        if (re.search(b"(\x94|\x97|\x14|\x17)$", byte_array)): # BL / B instruction
+            address = int.from_bytes(byte_array, byteorder='little', signed=False) << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
+            if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
+        else:
+            print(f"unknown instruction: {byte_array.hex('-')} {byte_array2.hex('-')}")
+    else: # RVA & VA instructions of x64
         address = int.from_bytes(byte_array, byteorder='little', signed=True) # address size is 4 bytes
         if is_rva: address += 4 # RVA is based on next instruction (which OFTEN is at the next 4 bytes)
     return base + address if (is_rva or is_pcr) else address
