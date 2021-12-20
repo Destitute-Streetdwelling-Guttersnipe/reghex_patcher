@@ -33,11 +33,11 @@ sm_blacklist_fixes = [
 ]
 st_server_fixes = [ # fix online checks
     Fix(name="refs", reghex=r"(?<= . BE|. BF|8A 92|8A 96 ) .{4}", patch="", is_va=True,
-        look_behind="(53 | 55 |56 | 57 | 41 (54|55|56|57) )+ (48 8B EC)? (48 (83|81) EC)?"), # push ... ; mov rbp, rsp ; sub rsp, ...
+        look_behind="(53 | 55 |56 | 57 | 41 (54|55|56|57) | 48 8B EC | 48 89 E5 )+ (48 (83|81) EC)?"), # push r? ; mov rbp, rsp ; mov rbp, rsp ; sub rsp, ?
     Fix(name="refs", reghex=r"(?<= (48|4C) 8D (0D|05|15|25|35|3D) | 0F 10 05 ) .{4}", patch="", is_rva=True,
-        look_behind="(53 | 55 |56 | 57 | 41 (54|55|56|57) )+ (48 8B EC)? (48 (83|81) EC)?"), # push ... ; mov rbp, rsp ; sub rsp, ...
+        look_behind="(53 | 55 |56 | 57 | 41 (54|55|56|57) | 48 8B EC | 48 89 E5 )+ (48 (83|81) EC)?"), # push r? ; mov rbp, rsp ; mov rbp, rsp ; sub rsp, ?
     Fix(name="refs", reghex=r".{3} (90|B0|D0|F0)  .{3} (91)", patch="", is_pcr=True,
-        look_behind="(FF . . D1)?  (.{3} A9)*  FD . . 91"),
+        look_behind="(. 03 1E AA  .{3} (94|97)  FE 03 . AA)? ( FF . . D1 | (F4|F6|F8|FA|FC|FD) . . A9 | (E9|EB) . . 6D | FD . . 91 )+"),
 ]
 st_delay_fixes = [ # extend the delay period
 ]
