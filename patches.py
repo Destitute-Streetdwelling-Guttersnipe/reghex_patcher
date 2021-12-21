@@ -32,6 +32,8 @@ st_blacklist_fixes = [
 sm_blacklist_fixes = [
 ]
 st_server_fixes = [ # fix online checks
+    Fix(name="refs", reghex=r"(?<= C7 84 . .{4} | .{3} C7 44 . . | .{5} 48 ([B8-BB]|[BD-BF]) ) .", patch="",
+        look_behind="(53 | 55 |56 | 57 | 41 (54|55|56|57) | 48 8B EC | 48 89 E5 )+ (48 (83|81) EC)?"), # push r? ; mov rbp, rsp ; mov rbp, rsp ; sub rsp, ?
     Fix(name="refs", reghex=r"(?<= . BE|. BF|8A 92|8A 96 ) .{4}", patch="", is_va=True,
         look_behind="(53 | 55 |56 | 57 | 41 (54|55|56|57) | 48 8B EC | 48 89 E5 )+ (48 (83|81) EC)?"), # push r? ; mov rbp, rsp ; mov rbp, rsp ; sub rsp, ?
     Fix(name="refs", reghex=r"(?<= (48|4C) 8D (0D|05|15|25|35|3D) | 0F 10 05 ) .{4}", patch="", is_rva=True,
