@@ -38,7 +38,7 @@ def Patch(data, display_offset = 0):
                 data[offset : offset + len(patch)] = patch
             else:
                 if refs.get(address):
-                    ref_info = f"look_behind <- {refs[address]} at {hex(offset0 + display_offset)} a={hex(address0)}"
+                    ref_info = f"look_behind {fix.name} <- {refs[address]} at {hex(offset0 + display_offset)} a={hex(address0)}"
                     for m in FindRegHex(fix.look_behind, data[0 : offset0]):
                         if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                     address = Offset2Address(sections, offset)
@@ -51,7 +51,7 @@ def Ref2Address(base, data, offset, is_rva, is_pcr):
     byte_array = data[offset : offset+4]
     byte_array2 = data[offset+4 : offset+8]
     if is_pcr: # PC relative instructions of arm64
-        if (re.search(b"(\x90|\xB0|\xD0|\xF0)$", byte_array) and re.search(b"(\x91)$", byte_array2)): # ADRP & ADD instructions
+        if (re.search(b"\x90|\xB0|\xD0|\xF0$", byte_array) and re.search(b"\x91$", byte_array2)): # ADRP & ADD instructions
             instr = int.from_bytes(byte_array, byteorder='little', signed=False)
             immlo = (instr & 0x60000000) >> 29
             immhi = (instr & 0xffffe0) >> 3
@@ -62,11 +62,11 @@ def Ref2Address(base, data, offset, is_rva, is_pcr):
             if instr2 & 0xc00000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
             return page_address + value64 + imm12
-        if (re.search(b"(\x94|\x97|\x14|\x17)$", byte_array)): # BL / B instruction
+        if (re.search(b"\x94|\x97|\x14|\x17$", byte_array)): # BL / B instruction
             address = int.from_bytes(byte_array, byteorder='little', signed=False) << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
             if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
         else:
-            print(f"unknown instruction: {byte_array.hex('-')} {byte_array2.hex('-')}")
+            print(f"unknown pcr instruction: {byte_array.hex('-')} {byte_array2.hex('-')} at {hex(offset)}")
     else: # RVA & VA instructions of x64
         address = int.from_bytes(byte_array, byteorder='little', signed=True) # address size is 4 bytes
         if is_rva: address += 4 # RVA is based on next instruction (which OFTEN is at the next 4 bytes)
