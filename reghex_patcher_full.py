@@ -19,7 +19,7 @@ def PatchFile(input_file, output_file):
 
 def FindRegHex(reghex, data, showMatchedText = False):
     regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), encoding='utf-8') # escape hex bytes
-    return re.finditer(regex, data, re.DOTALL | re.VERBOSE)
+    return re.finditer(regex.replace(b' ', b''), data, re.DOTALL) # remove all spaces
 
 def Patch(data, display_offset = 0):
     refs = {}

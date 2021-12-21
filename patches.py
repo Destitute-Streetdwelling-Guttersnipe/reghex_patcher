@@ -32,14 +32,14 @@ st_blacklist_fixes = [
 sm_blacklist_fixes = [
 ]
 st_server_fixes = [ # fix online checks
-    Fix(name="ref1", reghex=r"(?<= C7 84 . .{4} | .{3} C7 44 . . | .{5} 48 ([B8-BB]|[BD-BF]) ) .", patch="",
-        look_behind=r"( (53|[55-57]) | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
-    Fix(name="ref2", reghex=r"(?<= . ([B8-BB]|[BD-BF]) | 8A ([80-84]|[86-8C]|[8E-94]|[96-97]) ) .{4}", patch="", is_va=True, ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
-        look_behind=r"( (53|[55-57]) | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
-    Fix(name="ref3", reghex=r"(?<= ( (48|4C) 8D | 0F 10 ) (05|0D|15|1D|25|2D|35|3D) ) .{4}", patch="", is_rva=True, ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
-        look_behind=r"( (53|[55-57]) | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
-    Fix(name="ref4", reghex=r".{3} (90|B0|D0|F0)  .{3} 91", patch="", is_pcr=True, ## adrp x?, ? ; add x?, x?, ?
-        look_behind=r"(. 03 1E AA  .{3} (94|97)  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
+    Fix(name="ref1", reghex=r"(?<= C7 84 . .{4} | .{3} C7 44 . . | .{5} 48 [B8-BB BD-BF] ) .", patch="",
+        look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+    Fix(name="ref2", reghex=r"(?<= . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4}", patch="", is_va=True, ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
+        look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+    Fix(name="ref3", reghex=r"(?<= ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) .{4}", patch="", is_rva=True, ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
+        look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+    Fix(name="ref4", reghex=r".{3} [90 B0 D0 F0]  .{3} 91", patch="", is_pcr=True, ## adrp x?, ? ; add x?, x?, ?
+        look_behind=r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
 ]
 st_delay_fixes = [ # extend the delay period
 ]
