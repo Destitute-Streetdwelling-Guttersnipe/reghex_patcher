@@ -10,7 +10,7 @@ ret = "C3" # ret
 ret0 = "48 31 C0 C3" # xor rax, rax; ret
 ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
 ret119 = "48 C7 C0 19 01 00 00 C3" # mov rax, 0x119; ret
-Fix = collections.namedtuple('Fix', 'name reghex patch is_rva is_va is_pcr refs look_behind', defaults=('', '', '', False, False, False, None, '')) # reghex is regex with hex bytes
+Fix = collections.namedtuple('Fix', 'name reghex patch ref look_behind', defaults=('', '', '', False, None)) # reghex is regex with hex bytes
 st_wind_fixes = [
 ]
 st_linux_fixes = [
@@ -32,14 +32,12 @@ st_blacklist_fixes = [
 sm_blacklist_fixes = [
 ]
 st_server_fixes = [ # fix online checks
-    Fix(name="ref1", reghex=r"(?<= C7 84 . .{4} | .{3} C7 44 . . | .{5} 48 [B8-BB BD-BF] ) .",
-        look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
-    Fix(name="ref2", reghex=r"(?<= . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4}", is_va=True, ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
-        look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
-    Fix(name="ref3", reghex=r"(?<= ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) .{4}", is_rva=True, ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
-        look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
-    Fix(name="ref4", reghex=r".{3} [90 B0 D0 F0]  .{3} 91", is_pcr=True, ## adrp x?, ? ; add x?, x?, ?
-        look_behind=r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
+    Fix(name="ref1", reghex=r"(?<= C7 84 . .{4} | .{3} C7 44 . . | .{5} 48 [B8-BB BD-BF] ) . |"
+                          + r"(?<= . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4} |" ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
+                          + r"(?<= ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) .{4}", ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
+        ref=True, look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+    Fix(name="ref4", reghex=r"(?<= .{3} [90 B0 D0 F0] ) .{3} 91", ## adrp x?, ? ; add x?, x?, ?
+        ref=True, look_behind=r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
 ]
 st_delay_fixes = [ # extend the delay period
 ]
