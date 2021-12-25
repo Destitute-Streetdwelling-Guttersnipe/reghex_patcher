@@ -38,7 +38,7 @@ ref_detections = [ # detect string in data & code sections
         look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
     # detections for referenced data inside AMD64 instructions
     Fix(name="ref2", reghex=r"(?<= . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4} |" ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
-                          + r"(?<= ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) .{4}", ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
+                          + r"(?<= (?: [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) .{4}", ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
         ref=True, look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
     # detections for referenced data inside ARM64 instructions
     Fix(name="ref4", reghex=r"(?<= .{3} [90 B0 D0 F0] ) .{3} 91", ## adrp x?, ? ; add x?, x?, ?

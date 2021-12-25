@@ -26,16 +26,21 @@ def Patch(data, display_offset = 0):
     refs = {}
     sections, arch = FileInfo(data)
     for fix in FindFixes(data):
-        for match in FindRegHex(fix.reghex, data):
-            offset0 = offset = match.start()
+        data = PatchFix(fix, data, display_offset, sections, arch, refs)
+    return data
+
+def PatchFix(fix, data, display_offset, sections, arch, refs):
+    for match in FindRegHex(fix.reghex, data):
+        for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
+            offset0 = offset = match.start(groupIndex)
             address0 = address = Offset2Address(sections, offset)
             if fix.ref:
                 address = Ref2Address(address, data, offset, arch)
                 offset = Address2Offset(sections, address)
             if not fix.look_behind:
                 refs[address0] = fix.name
-                print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {fix.patch}")
-                patch = bytes.fromhex(fix.patch)
+                patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
+                print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {patch.hex(' ')}")
                 data[offset : offset + len(patch)] = patch
             else:
                 if refs.get(address):
