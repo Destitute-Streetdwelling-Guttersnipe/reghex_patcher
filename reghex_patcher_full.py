@@ -38,7 +38,7 @@ def PatchFix(fix, data, display_offset, sections, arch, refs):
                 address = Ref2Address(address, data, offset, arch)
                 offset = Address2Offset(sections, address)
             if not fix.look_behind:
-                refs[address0] = fix.name
+                refs[address] = fix.name
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
                 print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {patch.hex(' ')}")
                 data[offset : offset + len(patch)] = patch
