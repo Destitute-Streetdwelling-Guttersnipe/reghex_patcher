@@ -112,8 +112,9 @@ def FileInfo(data):
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
+        base = pe.OPTIONAL_HEADER.ImageBase
         arch = { 0x8664: AMD64, 0xAA64: ARM64}[pe.FILE_HEADER.Machine] # die on unknown arch
-        sections = [(s.VirtualAddress, s.PointerToRawData) for s in pe.sections]
+        sections = [(base + s.VirtualAddress, s.PointerToRawData) for s in pe.sections]
     elif re.search(b"^\x7FELF", data):
         from elftools.elf.elffile import ELFFile # pip3 install pyelftools
         import io
