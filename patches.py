@@ -12,6 +12,8 @@ ret = "C3" # ret
 ret0 = "48 31 C0 C3" # xor rax, rax; ret
 ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
 ret119 = "48 C7 C0 19 01 00 00 C3" # mov rax, 0x119; ret
+ret0_rcx = "48 31 C0  48 8B 11  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx, qword ptr [rcx]; cmp byte ptr [rdx], 0x2d; setne al; ret
+ret0_rdi = "48 31 C0  48 8B 17  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx, qword ptr [rdi]; cmp byte ptr [rax], 0x2d; setne al; ret
 Fix = collections.namedtuple('Fix', 'name reghex patch ref look_behind', defaults=('', '', '', False, None)) # reghex is regex with hex bytes
 st_wind_fixes = [
 ]
