@@ -39,14 +39,14 @@ ref_detections = [ # detect string in data & code sections
     # detections for number, string inside AMD64 instructions
     Fix(name="ref1", reghex=r"(?<= C7 84 . .{4} | .{3} C7 44 . . | .{5} [41 48] [B8-BB BD-BF] ) . |"
                           + r"(?<= . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4}", ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
-        look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+        look_behind=True),
     # detections for referenced data inside AMD64 instructions
     Fix(name="ref2", reghex=r"(?<= . E8 | . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4} |" ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
                           + r"(?<= (?: [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) .{4}", ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
-        ref=True, look_behind=r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+        ref=True, look_behind=True),
     # detections for referenced data inside ARM64 instructions
     Fix(name="ref4", reghex=r"(?<= .{3} [90 B0 D0 F0] ) .{3} 91", ## adrp x?, ? ; add x?, x?, ?
-        ref=True, look_behind=r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
+        ref=True, look_behind=True),
 ]
 st_delay_fixes = [ # extend the delay period
 ]

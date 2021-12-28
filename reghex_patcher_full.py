@@ -45,7 +45,7 @@ def PatchFix(fix, data, display_offset, sections, arch, refs):
             else:
                 if refs.get(address):
                     ref_info = f"look_behind {fix.name} <- {refs[address]} at {hex(offset0 + display_offset)} a={hex(address0)}"
-                    for m in FindRegHex(fix.look_behind, data[0 : offset0]):
+                    for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
                         if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                     address = Offset2Address(sections, offset)
                     print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: {ref_info}")
@@ -54,6 +54,13 @@ def PatchFix(fix, data, display_offset, sections, arch, refs):
 
 AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
+
+function_prologue_reghex = {
+    AMD64:  r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+          + r"(48 [81 83] EC)?", ## sub rsp, ?,
+    ARM64:  r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
+          + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
+}
 
 def Ref2Address(base, data, offset, arch):
     # TODO: use byteorder from FileInfo(data)
