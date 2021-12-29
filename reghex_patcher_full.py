@@ -23,13 +23,16 @@ def FindRegHex(reghex, data, onlyFirstMatch = False):
     return next(it, None) if onlyFirstMatch else it
 
 def Patch(data, display_offset = 0):
+    patches = {}
     refs = {}
     sections, arch = FileInfo(data)
     for fix in FindFixes(data):
-        data = PatchFix(fix, data, display_offset, sections, arch, refs)
+        PatchFix(fix, data, display_offset, sections, arch, refs, patches)
+    for offset in patches:
+        data[offset : offset + len(patches[offset])] = patches[offset]
     return data
 
-def PatchFix(fix, data, display_offset, sections, arch, refs):
+def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
     for match in FindRegHex(fix.reghex, data):
         for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
             offset0 = offset = match.start(groupIndex)
@@ -42,7 +45,7 @@ def PatchFix(fix, data, display_offset, sections, arch, refs):
                 refs[address0] = fix.name # address0 can be equal to address when ref not exist
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
                 print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {patch.hex(' ')}")
-                data[offset : offset + len(patch)] = patch
+                patches[offset] = patch
             elif refs.get(address):
                 ref_info = f"look_behind {fix.name} <- {refs.get(address0, '.'+refs[address])} at {hex(offset0 + display_offset)} a={hex(address0)}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
@@ -50,7 +53,6 @@ def PatchFix(fix, data, display_offset, sections, arch, refs):
                 address = Offset2Address(sections, offset)
                 print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: {ref_info}")
         if not fix.ref and not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
-    return data
 
 AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
