@@ -43,13 +43,12 @@ def PatchFix(fix, data, display_offset, sections, arch, refs):
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
                 print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {patch.hex(' ')}")
                 data[offset : offset + len(patch)] = patch
-            else:
-                if refs.get(address):
-                    ref_info = f"look_behind {fix.name} <- {refs.get(address0, '.'+refs[address])} at {hex(offset0 + display_offset)} a={hex(address0)}"
-                    for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
-                        if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
-                    address = Offset2Address(sections, offset)
-                    print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: {ref_info}")
+            elif refs.get(address):
+                ref_info = f"look_behind {fix.name} <- {refs.get(address0, '.'+refs[address])} at {hex(offset0 + display_offset)} a={hex(address0)}"
+                for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
+                    if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
+                address = Offset2Address(sections, offset)
+                print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: {ref_info}")
         if not fix.ref and not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
     return data
 
