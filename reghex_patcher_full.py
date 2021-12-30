@@ -48,7 +48,8 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
                 print(f"[+] Patch at a:0x{address:x} o:0x{offset + display_offset:06x} {ref_info}{fix.name} {patch.hex(' ')}")
                 patches[offset] = patch
             elif refs.get(address):
-                ref_info = f"{fix.name} -> a:0x{address0:x} o:0x{offset0 + display_offset:06x} {refs.get(address0, '->' + refs.get(address, '?'))}"
+                more_info = f" -> a:0x{address:x} o:0x{offset + display_offset:06x} {refs.get(address)}" if address != address0 and refs.get(address) else ""
+                ref_info = f"{fix.name} -> a:0x{address0:x} o:0x{offset0 + display_offset:06x} {refs.get(address0, '->' + refs.get(address, '?')):35}{more_info}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
                     if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                 address = Offset2Address(sections, offset)
