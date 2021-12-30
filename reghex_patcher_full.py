@@ -40,17 +40,17 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
             if fix.ref:
                 address = Ref2Address(address, data, offset, arch)
                 offset = Address2Offset(sections, address)
+            addr0_info = f"a:0x{address0:x} o:0x{offset0 + display_offset:06x}"
+            addr_info = f"a:0x{address:x} o:0x{offset + display_offset:06x}" if address != address0 else " " * len(addr0_info)
             if not fix.look_behind:
                 refs[address] = fix.name.split('.')[-1] # keep the part after the dot
                 refs[address0] = fix.name # address0 can be equal to address when ref not exist
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
-                ref_info = f"{refs[address]:20} <- a:0x{address0:x} o:0x{offset0 + display_offset:06x} " if address != address0 else ""
-                print(f"[+] Patch at a:0x{address:x} o:0x{offset + display_offset:06x} {ref_info}{fix.name} {patch.hex(' ')}")
+                print(f"[+] Patch at {addr0_info} -> {addr_info} {fix.name} {patch.hex(' ')}")
                 patches[offset] = patch
             elif refs.get(address):
-                addr0_info = f"-> a:0x{address0:x} o:0x{offset0 + display_offset:06x}"
-                addr_info = f"-> a:0x{address:x} o:0x{offset + display_offset:06x}" if address != address0 and refs.get(address) else " " * len(addr0_info)
-                ref_info = f"{fix.name} {addr0_info} {addr_info} {refs.get(address0, refs.get(address, '?'))}"
+                if address == address0 or not refs.get(address): addr_info = " " * len(addr0_info)
+                ref_info = f"{fix.name} <- {addr0_info} -> {addr_info} {refs.get(address0, refs.get(address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
                     if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                 address = Offset2Address(sections, offset)
