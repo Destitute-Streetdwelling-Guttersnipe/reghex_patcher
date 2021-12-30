@@ -44,15 +44,15 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
                 refs[address] = fix.name.split('.')[-1] # keep the part after the dot
                 refs[address0] = fix.name # address0 can be equal to address when ref not exist
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
-                ref_info = f" <- {hex(offset0 + display_offset)} a={hex(address0)}: " if address != address0 else ""
-                print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {ref_info}{fix.name} {patch.hex(' ')}")
+                ref_info = f"{refs[address]:20} <- a={hex(address0)} {hex(offset0 + display_offset)}: " if address != address0 else ""
+                print(f"[+] Patch at a={hex(address)} {hex(offset + display_offset)}: {ref_info}{fix.name} {patch.hex(' ')}")
                 patches[offset] = patch
             elif refs.get(address):
-                ref_info = f"{fix.name} <- {hex(offset0 + display_offset)} a={hex(address0)}: {refs.get(address0, '.' + refs.get(address, '?'))}"
+                ref_info = f"{fix.name} <- a={hex(address0)} {hex(offset0 + display_offset)}: {refs.get(address0, '.' + refs.get(address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
                     if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                 address = Offset2Address(sections, offset)
-                print(f"[+] Found at {hex(offset + display_offset)} a={hex(address)}: {ref_info}")
+                print(f"[+] Found at a={hex(address)} {hex(offset + display_offset)}: {ref_info}")
         if not fix.ref and not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
