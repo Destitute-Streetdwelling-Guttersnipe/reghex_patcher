@@ -44,10 +44,11 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
                 refs[address] = fix.name.split('.')[-1] # keep the part after the dot
                 refs[address0] = fix.name # address0 can be equal to address when ref not exist
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
-                print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {fix.name} {patch.hex(' ')}")
+                ref_info = f" <- {hex(offset0 + display_offset)} a={hex(address0)}: " if address != address0 else ""
+                print(f"[+] Patch at {hex(offset + display_offset)} a={hex(address)}: {ref_info}{fix.name} {patch.hex(' ')}")
                 patches[offset] = patch
             elif refs.get(address):
-                ref_info = f"look_behind {fix.name} <- {refs.get(address0, '.'+refs[address])} at {hex(offset0 + display_offset)} a={hex(address0)}"
+                ref_info = f"{fix.name} <- {hex(offset0 + display_offset)} a={hex(address0)}: {refs.get(address0, '.' + refs.get(address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
                     if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                 address = Offset2Address(sections, offset)
