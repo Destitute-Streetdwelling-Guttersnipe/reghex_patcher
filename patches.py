@@ -36,13 +36,10 @@ st_blacklist_fixes = [
 sm_blacklist_fixes = [
 ]
 ref_detections = [ # detect string in data & code sections
-    # detections for number, string inside AMD64 instructions
-    Fix(name="ref1", reghex=r"(?<= C7 84 . .{4} | .{3} C7 44 . . | .{5} [41 48] [B8-BB BD-BF] ) . |"
-                          + r"(?<= . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4}", ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
-        look_behind=True),
-    # detections for referenced data inside AMD64 instructions
-    Fix(name="ref2", reghex=r"(?<= . E8 | . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] ) .{4} |" ## mov e?, ? ; mov ?l, byte ptr [r? + ?]
-                          + r"(?<= (?: [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) .{4}", ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
+    # detections for number, string and referenced data inside AMD64 instructions
+    Fix(name="ref1", reghex=r"(?: C7 84 . .{4} | C7 44 . . | [41 48] [B8-BB BD-BF] |" ## mov dword ptr [r? + r? + ?], ? ; mov r?, ?
+                          + r"   E8 | 8A [80-84 86-8C 8E-94 96-97] | [B8-BB BD-BF] |" ## call ? ; mov ?l, byte ptr [r? + ?] ; mov e?, ?
+                          + r"  (?: [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) (.)", ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
         ref=True, look_behind=True),
     # detections for referenced data inside ARM64 instructions
     Fix(name="ref4", reghex=r"(?<= .{3} [90 B0 D0 F0] ) .{3} 91", ## adrp x?, ? ; add x?, x?, ?

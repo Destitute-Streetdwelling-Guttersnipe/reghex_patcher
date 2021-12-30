@@ -48,7 +48,7 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if groupIndex > 0 and len(fix.patch) >= groupIndex else fix.patch)
                 print(f"[+] Patch at {addr0_info} -> {addr_info} {fix.name} {patch.hex(' ')}")
                 patches[offset] = patch
-            elif refs.get(address):
+            elif refs.get(address) or refs.get(address0):
                 if address == address0 or not refs.get(address): addr_info = " " * len(addr0_info)
                 ref_info = f"{fix.name} <- {addr0_info} -> {addr_info} {refs.get(address0, refs.get(address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
