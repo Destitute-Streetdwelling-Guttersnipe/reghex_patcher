@@ -33,6 +33,7 @@ def Patch(data, display_offset = 0):
     return data
 
 def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
+    offset = None
     for match in FindRegHex(fix.reghex, data):
         for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
             offset0 = offset = match.start(groupIndex)
@@ -55,7 +56,7 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
                     if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
                 address = Offset2Address(sections, offset)
                 print(f"[+] Found at a:0x{address:x} o:0x{offset + display_offset:06x} {ref_info}")
-        if not fix.ref and not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
+    if fix.patch != '' and not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
