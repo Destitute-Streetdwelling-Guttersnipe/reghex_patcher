@@ -38,9 +38,11 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
         for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
             offset0 = offset = match.start(groupIndex)
             address0 = address = Offset2Address(sections, offset)
+            if address0 == None: continue
             if fix.ref:
                 address = Ref2Address(address, data, offset, arch)
                 offset = Address2Offset(sections, address)
+                if offset == None: continue
             addr0_info = f"a:0x{address0:x} o:0x{offset0 + display_offset:06x}"
             addr_info = f"a:0x{address:x} o:0x{offset + display_offset:06x}" if address != address0 else " " * len(addr0_info)
             if not fix.look_behind:
@@ -152,14 +154,14 @@ def Address2Offset(sections, address):
         if address >= s_address:
             return address - s_address + s_offset
     # print(f"[!] Address 0x{address:x} not found in sections")
-    return address
+    return None
 
 def Offset2Address(sections, offset):
     for s_address, s_offset in sorted(sections, key=lambda pair: pair[1], reverse=True): # sorted by offset
         if offset >= s_offset:
             return offset - s_offset + s_address
     # print(f"[!] Offset 0x{offset:x} not found in sections")
-    return offset
+    return None
 
 if __name__ == "__main__":
     main()
