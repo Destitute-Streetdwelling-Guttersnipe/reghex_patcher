@@ -44,8 +44,8 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
             addr0_info = f"a:0x{address0:x} o:0x{offset0 + display_offset:06x}"
             addr_info = f"a:0x{address:x} o:0x{offset + display_offset:06x}" if address != address0 else " " * len(addr0_info)
             if not fix.look_behind:
-                refs[address] = fix.name.split('.')[-1] # keep the part after the dot
-                refs[address0] = fix.name # address0 can be equal to address when ref not exist
+                if not refs.get(address0): refs[address0] = fix.name # address0 can be equal to address when ref not exist
+                if not refs.get(address): refs[address] = fix.name.split('.')[-1] # keep the part after the dot
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if patch != b'': print(f"[+] Patch at {addr0_info} -> {addr_info} {fix.name} {patch.hex(' ')}")
                 patches[offset] = patch
