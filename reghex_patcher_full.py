@@ -25,23 +25,23 @@ def FindRegHex(reghex, data, onlyFirstMatch = False):
 def Patch(data, display_offset = 0):
     patches = {}
     refs = {}
-    arch, sections = FileInfo(data)
+    arch, address2offset, offset2address = FileInfo(data)
     for fix in FindFixes(data):
-        PatchFix(fix, data, display_offset, sections, arch, refs, patches)
+        PatchFix(fix, data, display_offset, address2offset, offset2address, arch, refs, patches)
     for offset in patches:
         data[offset : offset + len(patches[offset])] = patches[offset]
     return data
 
-def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
+def PatchFix(fix, data, display_offset, address2offset, offset2address, arch, refs, patches):
     offset = None
     for match in FindRegHex(fix.reghex, data):
         for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
             offset0 = offset = match.start(groupIndex)
-            address0 = address = Offset2Address(sections, offset)
+            address0 = address = ConvertBetweenAddressAndOffset(offset2address, offset)
             if address0 == None: continue
             if fix.ref:
-                address = Ref2Address(address, data[offset-4 : offset+4], arch)
-                offset = Address2Offset(sections, address)
+                address = Ref2Address(address0, data[offset-4 : offset+4], arch)
+                offset = ConvertBetweenAddressAndOffset(address2offset, address)
                 if offset == None: continue
             addr0_info = f"a:0x{address0:x} o:0x{offset0 + display_offset:06x}"
             addr_info = f"a:0x{address:x} o:0x{offset + display_offset:06x}" if address != address0 else " " * len(addr0_info)
@@ -56,7 +56,7 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
                 ref_info = f"{fix.name} <- {addr0_info} -> {addr_info} {refs.get(address0, '.' + refs.get(address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
                     if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
-                address = Offset2Address(sections, offset)
+                address = ConvertBetweenAddressAndOffset(offset2address, offset)
                 print(f"[-] Found at a:0x{address:x} o:0x{offset + display_offset:06x} {ref_info}")
     if fix.patch != '' and not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
@@ -137,18 +137,12 @@ def FileInfo(data):
         sections = [(s.addr, s.offset) for s in macho.get_sections()]
     else:
         exit("[!] Can not detect file type")
-    return arch, [(s[0], s[1]) for s in sections if s[0] > 0 and s[1] > 0]
+    address2offset = sorted([(addr, offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
+    return arch, address2offset, sorted([(offset, addr) for addr, offset in address2offset], reverse=True) # sort by offset
 
-def Address2Offset(sections, address):
-    for s_address, s_offset in sorted(sections, key=lambda pair: pair[0], reverse=True): # sorted by address
-        if address >= s_address:
-            return address - s_address + s_offset
-    return None
-
-def Offset2Address(sections, offset):
-    for s_address, s_offset in sorted(sections, key=lambda pair: pair[1], reverse=True): # sorted by offset
-        if offset >= s_offset:
-            return offset - s_offset + s_address
+def ConvertBetweenAddressAndOffset(sorted_pairs, position):
+    for first_part, second_part in sorted_pairs:
+        if position >= first_part: return position - first_part + second_part
     return None
 
 if __name__ == "__main__":
