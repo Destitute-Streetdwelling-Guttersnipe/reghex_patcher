@@ -1,6 +1,6 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
 
-import re, sys
+import re, sys, struct
 import patches as Fixes
 
 def main():
@@ -72,29 +72,26 @@ function_prologue_reghex = {
 
 def Ref2Address(base, data, offset, arch):
     # TODO: use byteorder from FileInfo(data)
-    byte_array = data[offset : offset+4]
-    byte_array2 = data[offset-4 : offset]
     if arch == ARM64: # PC relative instructions of arm64
-        if FindRegHex(r"[90 B0 D0 F0]$", byte_array2, True) and FindRegHex(r"91$", byte_array, True): # ADRP & ADD instructions
-            instr = int.from_bytes(byte_array2, byteorder='little', signed=False)
+        if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", data[offset-4 : offset+4], True): # ADRP & ADD instructions
+            (instr, instr2) = struct.unpack("<2L", data[offset-4 : offset+4]) # 2 unsigned long in little-endian
             immlo = (instr & 0x60000000) >> 29
             immhi = (instr & 0xffffe0) >> 3
             value64 = (immlo | immhi) << 12 # PAGE_SIZE = 0x1000 = 4096
             if value64 >> 33: value64 -= 1 << 34 # extend sign from MSB (bit 33)
-            instr2 = int.from_bytes(byte_array, byteorder='little', signed=False)
             imm12 = (instr2 & 0x3ffc00) >> 10
             if instr2 & 0xc00000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
             return page_address + value64 + imm12
-        elif FindRegHex(r"[94 97 14 17]$", byte_array, True): # BL / B instruction
-            address = int.from_bytes(byte_array, byteorder='little', signed=False) << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
+        elif FindRegHex(r"[94 97 14 17]$", data[offset : offset+4], True): # BL / B instruction
+            address = struct.unpack("<L", data[offset : offset+4])[0] << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
             if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
             return base + address
     elif arch == AMD64: # RVA & VA instructions of x64
-        address = int.from_bytes(byte_array, byteorder='little', signed=True) # address size is 4 bytes
-        if FindRegHex(r"( ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] | . . [E8 E9] )$", byte_array2, True):
+        address = struct.unpack("<l", data[offset : offset+4])[0] # address size is 4 bytes
+        if FindRegHex(r"( ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] | [E8 E9] )$", data[offset-4 : offset], True):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHex(r"( . [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] )$", byte_array2, True):
+        if FindRegHex(r"( [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] )$", data[offset-4 : offset], True):
             return address # VA reference
     return base
 
@@ -109,7 +106,6 @@ def FindFixes(data):
     exit("[!] Can not find fixes for target file")
 
 def SplitFatBinary(data):
-    import struct
     (magic, num_archs) = struct.unpack(">2L", data[:4*2])
     if magic == 0xCAFEBABE: # MacOS universal binary
         header_size = 4*5
