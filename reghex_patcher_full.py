@@ -40,7 +40,7 @@ def PatchFix(fix, data, display_offset, sections, arch, refs, patches):
             address0 = address = Offset2Address(sections, offset)
             if address0 == None: continue
             if fix.ref:
-                address = Ref2Address(address, data, offset, arch)
+                address = Ref2Address(address, data[offset-4 : offset+4], arch)
                 offset = Address2Offset(sections, address)
                 if offset == None: continue
             addr0_info = f"a:0x{address0:x} o:0x{offset0 + display_offset:06x}"
@@ -70,11 +70,11 @@ function_prologue_reghex = {
           + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
 }
 
-def Ref2Address(base, data, offset, arch):
+def Ref2Address(base, byte_array, arch):
     # TODO: use byteorder from FileInfo(data)
     if arch == ARM64: # PC relative instructions of arm64
-        if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", data[offset-4 : offset+4], True): # ADRP & ADD instructions
-            (instr, instr2) = struct.unpack("<2L", data[offset-4 : offset+4]) # 2 unsigned long in little-endian
+        if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, True): # ADRP & ADD instructions
+            (instr, instr2) = struct.unpack("<2L", byte_array) # 2 unsigned long in little-endian
             immlo = (instr & 0x60000000) >> 29
             immhi = (instr & 0xffffe0) >> 3
             value64 = (immlo | immhi) << 12 # PAGE_SIZE = 0x1000 = 4096
@@ -83,15 +83,15 @@ def Ref2Address(base, data, offset, arch):
             if instr2 & 0xc00000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
             return page_address + value64 + imm12
-        elif FindRegHex(r"[94 97 14 17]$", data[offset : offset+4], True): # BL / B instruction
-            address = struct.unpack("<L", data[offset : offset+4])[0] << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
+        elif FindRegHex(r"[94 97 14 17]$", byte_array, True): # BL / B instruction
+            address = struct.unpack("<L", byte_array[4:])[0] << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
             if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
             return base + address
     elif arch == AMD64: # RVA & VA instructions of x64
-        address = struct.unpack("<l", data[offset : offset+4])[0] # address size is 4 bytes
-        if FindRegHex(r"( ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] | [E8 E9] )$", data[offset-4 : offset], True):
+        address = struct.unpack("<l", byte_array[4:])[0] # address size is 4 bytes
+        if FindRegHex(r"( ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] | [E8 E9] )$", byte_array[:4], True):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHex(r"( [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] )$", data[offset-4 : offset], True):
+        if FindRegHex(r"( [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] )$", byte_array[:4], True):
             return address # VA reference
     return base
 
