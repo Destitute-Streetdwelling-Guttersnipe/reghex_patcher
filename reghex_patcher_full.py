@@ -25,7 +25,7 @@ def FindRegHex(reghex, data, onlyFirstMatch = False):
 def Patch(data, display_offset = 0):
     patches = {}
     refs = {}
-    sections, arch = FileInfo(data)
+    arch, sections = FileInfo(data)
     for fix in FindFixes(data):
         PatchFix(fix, data, display_offset, sections, arch, refs, patches)
     for offset in patches:
@@ -103,8 +103,7 @@ def FindFixes(data):
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, data):
             detected |= set([ fix.name, *m.groups() ])
-            print("[-] Found at {}: pattern {} {}".format(hex(m.start()), fix.name, m.group(0)))
-    print(f"[+] Detected tags: {detected}\n")
+            print(f"[-] Detected at 0x{m.start():x}: {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes
     exit("[!] Can not find fixes for target file")
@@ -115,6 +114,7 @@ def SplitFatBinary(data):
     if magic == 0xCAFEBABE: # MacOS universal binary
         header_size = 4*5
         for i in range(num_archs):
+            # with open(f"macho_executable{i}", "wb") as file: file.write(data)
             header_offset = 4*2 + header_size*i
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset:header_offset + header_size])
             print(f"[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
@@ -123,13 +123,11 @@ def SplitFatBinary(data):
         data = Patch(data)
 
 def FileInfo(data):
-    sections = []
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
-        base = pe.OPTIONAL_HEADER.ImageBase
         arch = { 0x8664: AMD64, 0xAA64: ARM64}[pe.FILE_HEADER.Machine] # die on unknown arch
-        sections = [(base + s.VirtualAddress, s.PointerToRawData) for s in pe.sections]
+        sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData) for s in pe.sections]
     elif re.search(b"^\x7FELF", data):
         from elftools.elf.elffile import ELFFile # pip3 install pyelftools
         import io
@@ -137,30 +135,24 @@ def FileInfo(data):
         arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64}[elf.header['e_machine']] # die on unknown arch
         sections = [(s.header['sh_addr'], s.header['sh_offset']) for s in elf.iter_sections()]
     elif re.search(b"^\xCF\xFA\xED\xFE", data):
-        # with open("macho_executable", "wb") as file: file.write(data)
         from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
         arch = { 0x1000007: AMD64, 0x100000c: ARM64}[macho.get_header().cputype] # die on unknown arch
         sections = [(s.addr, s.offset) for s in macho.get_sections()]
-        # print([f"{s.segname} a:{s.vmaddr:x} o:{s.fileoff:x}" for s in macho.get_segments()])
     else:
-        print("[!] Can not read file sections")
-    sections = [(s[0], s[1]) for s in sections if s[0] > 0 and s[1] > 0]
-    # print("[-] sections(address,offset): " + " ".join([f"(0x{s[0]:x},0x{s[1]:x})" for s in sections]))
-    return sections, arch
+        exit("[!] Can not detect file type")
+    return arch, [(s[0], s[1]) for s in sections if s[0] > 0 and s[1] > 0]
 
 def Address2Offset(sections, address):
     for s_address, s_offset in sorted(sections, key=lambda pair: pair[0], reverse=True): # sorted by address
         if address >= s_address:
             return address - s_address + s_offset
-    # print(f"[!] Address 0x{address:x} not found in sections")
     return None
 
 def Offset2Address(sections, offset):
     for s_address, s_offset in sorted(sections, key=lambda pair: pair[1], reverse=True): # sorted by offset
         if offset >= s_offset:
             return offset - s_offset + s_address
-    # print(f"[!] Offset 0x{offset:x} not found in sections")
     return None
 
 if __name__ == "__main__":
