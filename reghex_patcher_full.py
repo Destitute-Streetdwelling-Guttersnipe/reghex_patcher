@@ -120,7 +120,7 @@ def SplitFatBinary(data):
             print(f"[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
             data[offset:offset + size] = Patch(data[offset:offset + size], offset)
     else:
-        data = Patch(data)
+        data[:] = Patch(data)
 
 def FileInfo(data):
     if re.search(b"^MZ", data):
