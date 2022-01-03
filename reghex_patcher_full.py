@@ -25,14 +25,14 @@ def FindRegHex(reghex, data, onlyFirstMatch = False):
 def Patch(data, display_offset = 0):
     patches = {}
     refs = {}
-    arch, address2offset, offset2address = FileInfo(data)
     for fix in FindFixes(data):
-        PatchFix(fix, data, display_offset, address2offset, offset2address, arch, refs, patches)
+        PatchFix(fix, data, display_offset, refs, patches)
     for offset in patches:
         data[offset : offset + len(patches[offset])] = patches[offset]
     return data
 
-def PatchFix(fix, data, display_offset, address2offset, offset2address, arch, refs, patches):
+def PatchFix(fix, data, display_offset, refs, patches):
+    arch, address2offset, offset2address = FileInfo(data)
     offset = None
     for match in FindRegHex(fix.reghex, data):
         for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
@@ -118,6 +118,18 @@ def SplitFatBinary(data):
     else:
         data[:] = Patch(data)
 
+class MemoizeFirstArg: # adapt from https://stackoverflow.com/questions/1988804/what-is-memoization-and-how-can-i-use-it-in-python
+    def __init__(self, f):
+        self.f = f
+        self.first_arg = None
+        self.memo = None
+    def __call__(self, *args):
+        if self.first_arg != args[0]: # memoize when first arg changes
+            self.first_arg = args[0]
+            self.memo = self.f(*args)
+        return self.memo
+
+@MemoizeFirstArg
 def FileInfo(data):
     if re.search(b"^MZ", data):
         import pefile
