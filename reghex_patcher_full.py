@@ -5,16 +5,14 @@ import patches as Fixes
 
 def main():
     print(f"[-] ---- {credits}\n")
-    input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file output_file")
+    input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file [output_file]")
     output_file = sys.argv[2] if len(sys.argv) > 2 else input_file
     PatchFile(input_file, output_file)
 
 def PatchFile(input_file, output_file):
-    with open(input_file, 'rb') as file:
-        data = bytearray(file.read())
+    with open(input_file, 'rb') as file: data = bytearray(file.read())
     SplitFatBinary(data)
-    with open(output_file, "wb") as file:
-        file.write(data)
+    with open(output_file, "wb") as file: file.write(data)
     print(f"[+] Patched file saved to {output_file}")
 
 def FindRegHex(reghex, data, onlyFirstMatch = False):
@@ -49,10 +47,10 @@ def PatchFix(fix, data, display_offset, refs, patches):
                 if not refs.get(address0): refs[address0] = fix.name # address0 can be equal to address when ref not exist
                 if not refs.get(address): refs[address] = fix.name.split('.')[-1] # keep the part after the dot
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
-                if patch != b'': print(f"[+] Patch at {addr0_info} -> {addr_info} {fix.name} {patch.hex(' ')}")
-                patches[offset] = patch
+                if len(patch): print(f"[+] Patch at {addr0_info} -> {addr_info} {fix.name} {patch.hex(' ')}")
+                if len(patch): patches[offset] = patch
             elif refs.get(address) or refs.get(address0):
-                if address == address0 or not refs.get(address): addr_info = " " * len(addr0_info)
+                if not refs.get(address): addr_info = " " * len(addr0_info) # data inside instruction is not reference to anything else
                 ref_info = f"{fix.name} <- {addr0_info} -> {addr_info} {refs.get(address0, '.' + refs.get(address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : offset0]):
                     if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
