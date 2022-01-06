@@ -33,9 +33,9 @@ sm_macos_fixes_arm64 = [
 ]
 st_blacklist_fixes = [
 ]
-sm_blacklist_fixes = [
+string_detections = [ # detect string in data & code sections
 ]
-ref_detections = [ # detect string in data & code sections
+ref_detections = [
     # detection for number, string and function inside AMD64 instructions
     Fix(name="ref1", reghex=r"  (?: C7 84 . .{4} | C7 44 . . | [41 48] [B8-BB BD-BF] |" ## mov dword ptr [r? + r? + ?], ? ; mov r?, ?
                           + r"[E8 E9] | 8A [80-84 86-8C 8E-94 96-97] | [B8-BB BD-BF] |" ## call ? ; jmp ? ; mov ?l, byte ptr [r? + ?] ; mov e?, ?
@@ -51,18 +51,18 @@ st_delay_fixes = [ # extend the delay period
 sm_delay_fixes = [ # extend the delay period
 ]
 tagged_fixes = [
-    ([b"x64", "SublimeText" ,            b"windows"], st_wind_fixes + ref_detections ),
-    ([b"x64", "SublimeText" ,            b"osx"    ], st_macos_fixes + ref_detections),
-    ([        "SublimeText" ,  b"arm64", b"osx"    ], st_macos_fixes_arm64 + ref_detections),
-    ([b"x64", "SublimeText" ,            b"linux"  ], st_linux_fixes + ref_detections),
-    ([b"x64", "SublimeMerge",            b"windows"], sm_wind_fixes + ref_detections ),
-    ([b"x64", "SublimeMerge" ,           b"osx"    ], sm_macos_fixes + ref_detections),
-    ([        "SublimeMerge" , b"arm64", b"osx"    ], sm_macos_fixes_arm64 + ref_detections),
-    ([b"x64", "SublimeMerge",            b"linux"  ], sm_linux_fixes + ref_detections),
+    ([b"x64", "SublimeText" ,            b"windows"], string_detections + st_wind_fixes         + ref_detections ),
+    ([b"x64", "SublimeText" ,            b"osx"    ], string_detections + st_macos_fixes        + ref_detections),
+    ([        "SublimeText" ,  b"arm64", b"osx"    ], string_detections + st_macos_fixes_arm64  + ref_detections),
+    ([b"x64", "SublimeText" ,            b"linux"  ], string_detections + st_linux_fixes        + ref_detections),
+    ([b"x64", "SublimeMerge",            b"windows"], string_detections + sm_wind_fixes         + ref_detections ),
+    ([b"x64", "SublimeMerge" ,           b"osx"    ], string_detections + sm_macos_fixes        + ref_detections),
+    ([        "SublimeMerge" , b"arm64", b"osx"    ], string_detections + sm_macos_fixes_arm64  + ref_detections),
+    ([b"x64", "SublimeMerge",            b"linux"  ], string_detections + sm_linux_fixes        + ref_detections),
     # ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
     # ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),
-    ([        "SublimeText" ,                      ], ref_detections),
-    ([        "SublimeMerge",                      ], ref_detections),
+    ([        "SublimeText" ,                      ], string_detections + ref_detections),
+    ([        "SublimeMerge",                      ], string_detections + ref_detections),
 ]
 detections = [
     Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
