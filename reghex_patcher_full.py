@@ -37,7 +37,7 @@ def PatchFix(fix, data, display_offset, refs, patches):
             offset0 = offset = match.start(groupIndex)
             address0 = address = ConvertBetweenAddressAndOffset(offset2address, offset)
             if address0 == None: continue
-            if fix.ref:
+            if fix.ref and len(match.group(groupIndex)) == 4:
                 address = Ref2Address(address0, data[offset-4 : offset+4], arch)
                 offset = ConvertBetweenAddressAndOffset(address2offset, address)
             addr0_info = f"a:0x{address0:x} o:0x{offset0 + display_offset:06x}"
