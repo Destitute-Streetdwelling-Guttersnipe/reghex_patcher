@@ -30,7 +30,7 @@ def Patch(data, display_offset = 0):
     return data
 
 def PatchFix(fix, data, display_offset, refs, patches):
-    arch, address2offset, offset2address = FileInfo(data)
+    arch, address2offset, offset2address = FileInfo(data, display_offset)
     offset = None
     for match in FindRegHex(fix.reghex, data):
         for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
@@ -115,19 +115,9 @@ def SplitFatBinary(data):
     else:
         data[:] = Patch(data)
 
-class MemoizeFirstArg: # adapt from https://stackoverflow.com/questions/1988804/what-is-memoization-and-how-can-i-use-it-in-python
-    def __init__(self, f):
-        self.f = f
-        self.first_arg = None
-        self.memo = None
-    def __call__(self, *args):
-        if self.first_arg != args[0]: # memoize when first arg changes
-            self.first_arg = args[0]
-            self.memo = self.f(*args)
-        return self.memo
-
-@MemoizeFirstArg
-def FileInfo(data):
+FileInfoCache = {}
+def FileInfo(data, display_offset):
+    if FileInfoCache.get(display_offset): return FileInfoCache.get(display_offset)
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
@@ -147,7 +137,8 @@ def FileInfo(data):
     else:
         exit("[!] Can not detect file type")
     address2offset = sorted([(addr, offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
-    return arch, address2offset, sorted([(offset, addr) for addr, offset in address2offset], reverse=True) # sort by offset
+    FileInfoCache[display_offset] = (arch, address2offset, sorted([(offset, addr) for addr, offset in address2offset], reverse=True)) # sort by offset
+    return FileInfoCache.get(display_offset)
 
 def ConvertBetweenAddressAndOffset(sorted_pairs, position):
     for first_part, second_part in sorted_pairs:
