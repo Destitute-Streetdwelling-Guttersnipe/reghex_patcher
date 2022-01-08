@@ -31,32 +31,27 @@ def Patch(data, base_offset, end_offset):
         data[offset : offset + len(patches[offset])] = patches[offset]
 
 def PatchFix(fix, data, base_offset, end_offset, refs, patches):
-    arch, address2offset, offset2address = FileInfo(data[base_offset:end_offset], base_offset)
-    offset = None
+    p = None
     for match in FindRegHex(fix.reghex, data, base_offset, end_offset):
         for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
-            offset0 = offset = match.start(groupIndex)
-            address0 = address = ConvertBetweenAddressAndOffset(offset2address, offset)
-            if address0 == None: continue
+            p0 = p = Position(offset = match.start(groupIndex))
+            if p0.address == None: continue
             if fix.look_behind or (fix.ref and len(match.group(groupIndex)) == 4):
-                address = Ref2Address(address0, data[offset-4 : offset+4], arch)
-                offset = ConvertBetweenAddressAndOffset(address2offset, address)
-            addr0_info = f"a:0x{address0:x} o:0x{offset0:06x}"
-            addr_info = f"a:0x{address:x} o:0x{offset:06x}" if offset != None and address != address0 else " " * len(addr0_info)
-            if not fix.look_behind and offset != None:
-                if not refs.get(address0): refs[address0] = fix.name if groupIndex == 0 else '.'.join(fix.name.split('.')[0:groupIndex+1:groupIndex]) # address0 can be equal to address when ref not exist
-                if not refs.get(address): refs[address] = fix.name.split('.')[groupIndex] # keep the part after the dot
+                p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], FileInfo().cache['arch']))
+            p_info = p.info if p.offset != None and p.address != p0.address else " " * len(p0.info)
+            if not fix.look_behind and p.offset != None:
+                if not refs.get(p0.address): refs[p0.address] = fix.name if groupIndex == 0 else '.'.join(fix.name.split('.')[0:groupIndex+1:groupIndex]) # address0 can be equal to address when ref not exist
+                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[groupIndex] # keep the part after the dot
                 patch = bytes.fromhex(fix.patch[groupIndex-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
-                if len(patch): print(f"[+] Patch at {addr0_info} -> {addr_info} {refs[address0]} {patch.hex(' ')}")
-                if len(patch): patches[offset] = patch
-            if fix.look_behind and refs.get(address0, refs.get(address)):
-                if not refs.get(address): addr_info = " " * len(addr0_info) # data inside instruction is not reference to anything else
-                ref_info = f"{fix.name} <- {addr0_info} -> {addr_info} {refs.get(address0, '.' + refs.get(address, '?'))}"
-                for m in FindRegHex(function_prologue_reghex[arch], data, base_offset, offset0):
-                    if len(m.group(0)) > 1: offset = m.start() # NOTE: skip too short match to exclude false positive
-                address = ConvertBetweenAddressAndOffset(offset2address, offset)
-                print(f"[-] Found at a:0x{address:x} o:0x{offset:06x} {ref_info}")
-    if fix.patch != '' and not offset: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
+                if len(patch): print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} {patch.hex(' ')}")
+                if len(patch): patches[p.offset] = patch
+            if fix.look_behind and refs.get(p0.address, refs.get(p.address)):
+                if not refs.get(p.address): p_info = " " * len(p0.info) # data inside instruction is not reference to anything else
+                ref_info = f"{fix.name} <- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
+                for m in FindRegHex(function_prologue_reghex[FileInfo().cache['arch']], data, base_offset, p0.offset):
+                    if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
+                print(f"[-] Found at {Position(offset = o).info} {ref_info}")
+    if fix.patch != '' and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
@@ -67,6 +62,12 @@ function_prologue_reghex = {
     ARM64:  r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
           + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
 }
+
+class Position:
+    def __init__(self, address = None, offset = None):
+        self.address = address if address != None else ConvertBetweenAddressAndOffset(FileInfo().cache['offset2address'], offset)
+        self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(FileInfo().cache['address2offset'], address)
+        self.info = f"a:0x{self.address:x} o:0x{self.offset:06x}" if self.address != None and self.offset != None else ''
 
 def Ref2Address(base, byte_array, arch):
     # TODO: use byteorder from FileInfo(data)
@@ -120,9 +121,10 @@ def SplitFatBinary(data):
     else:
         Patch(data, 0, len(data))
 
-FileInfoCache = {}
-def FileInfo(data, display_offset):
-    if FileInfoCache.get(display_offset): return FileInfoCache.get(display_offset)
+class FileInfo:
+  cache = {}
+  def __init__(self, data = None, display_offset = None):
+    if data == None and display_offset == None: return
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
@@ -142,8 +144,7 @@ def FileInfo(data, display_offset):
     else:
         exit("[!] Can not detect file type")
     address2offset = sorted([(addr, offset + display_offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
-    FileInfoCache[display_offset] = (arch, address2offset, sorted([(offset, addr) for addr, offset in address2offset], reverse=True)) # sort by offset
-    return FileInfoCache.get(display_offset)
+    FileInfo.cache = {'arch': arch, 'address2offset': address2offset, 'offset2address': sorted([(offset, addr) for addr, offset in address2offset], reverse=True)} # sort by offset
 
 def ConvertBetweenAddressAndOffset(sorted_pairs, position):
     for first_part, second_part in sorted_pairs:
