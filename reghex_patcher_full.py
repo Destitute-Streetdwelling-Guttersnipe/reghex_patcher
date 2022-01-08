@@ -81,8 +81,12 @@ def Ref2Address(base, byte_array, arch):
             page_address = base >> 12 << 12 # clear 12 LSB
             return page_address + value64 + imm12
         elif FindRegHex(r"[94 97 14 17]$", byte_array, True): # BL / B instruction
-            address = struct.unpack("<L", byte_array[4:])[0] << 2 & ((1 << 28) - 1) # append 2 zero LSB, discard 6 MSB
+            address = struct.unpack("<L", byte_array[4:])[0] << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
             if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
+            return base + address
+        elif FindRegHex(r"[10]$", byte_array, True): # ADR instruction
+            address = struct.unpack("<L", byte_array[4:])[0] >> 3 & ((1 << 21) - 1) # discard 8 MSB, discard 3 LSB
+            if address >> 20: address -= 1 << 21 # extend sign from MSB (bit 20)
             return base + address
     elif arch == AMD64: # RVA & VA instructions of x64
         address = struct.unpack("<l", byte_array[4:])[0] # address size is 4 bytes

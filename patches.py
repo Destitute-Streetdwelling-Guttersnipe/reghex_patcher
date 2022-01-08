@@ -40,7 +40,7 @@ ref_detections = [
     Fix(name="ref1", reghex=r"  (?: C7 84 . .{4} | C7 44 . . | [41 48] [B8-BB BD-BF] |" ## mov dword ptr [r? + r? + ?], ? ; mov r?, ?
                           + r"[E8 E9] | 8A [80-84 86-8C 8E-94 96-97] | [B8-BB BD-BF] |" ## call ? ; jmp ? ; mov ?l, byte ptr [r? + ?] ; mov e?, ?
                           + r"    (?: [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] ) (.{4})" ## lea r?, [rip + ?] ; movups xmm0, xmmword ptr [rip + ?]
-                          + r" | (.{3} [94 97 14 17]) | [90 B0 D0 F0] (.{3} 91)", ## bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
+                          + r" | (.{3} [10 94 97 14 17]) | [90 B0 D0 F0] (.{3} 91)", ## bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
         ref=True, look_behind=True),
     # detection for number, string and function inside ARM64 instructions
     Fix(name="ref4", reghex=r"(?<= .{3} [90 B0 D0 F0] ) .{3} 91", ## adrp x?, ? ; add x?, x?, ?
