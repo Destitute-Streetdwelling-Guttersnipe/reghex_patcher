@@ -1,5 +1,4 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
-
 import re, sys, struct
 import patches as Fixes
 
@@ -15,11 +14,10 @@ def PatchFile(input_file, output_file):
     with open(output_file, "wb") as file: file.write(data)
     print(f"[+] Patched file saved to {output_file}")
 
-def FindRegHex(reghex, data, base_offset = 0, end_offset = None, onlyFirstMatch = False):
-    regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), encoding='utf-8') # escape hex bytes
-    r = re.compile(regex.replace(b' ', b''), re.DOTALL) # remove all spaces
-    it = r.finditer(data, base_offset, end_offset or len(data))
-    return next(it, None) if onlyFirstMatch else it
+def FindRegHex(reghex, data, base_offset = 0, end_offset = None, onlyOnce = False):
+    regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex).replace(' ', ''), 'utf-8') # escape hex bytes & remove all spaces
+    it = re.compile(regex, re.DOTALL).finditer(data, base_offset, end_offset or len(data))
+    return next(it, None) if onlyOnce else it
 
 def Patch(data, base_offset, end_offset):
     patches = {}
@@ -72,7 +70,7 @@ class Position:
 def Ref2Address(base, byte_array, arch):
     # TODO: use byteorder from FileInfo(data)
     if arch == ARM64: # PC relative instructions of arm64
-        if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, onlyFirstMatch=True): # ADRP & ADD instructions
+        if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, onlyOnce=True): # ADRP & ADD instructions
             (instr, instr2) = struct.unpack("<2L", byte_array) # 2 unsigned long in little-endian
             immlo = (instr & 0x60000000) >> 29
             immhi = (instr & 0xffffe0) >> 3
@@ -82,19 +80,19 @@ def Ref2Address(base, byte_array, arch):
             if instr2 & 0xc00000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
             return page_address + value64 + imm12
-        elif FindRegHex(r"[94 97 14 17]$", byte_array, onlyFirstMatch=True): # BL / B instruction
+        elif FindRegHex(r"[94 97 14 17]$", byte_array, onlyOnce=True): # BL / B instruction
             address = struct.unpack("<L", byte_array[4:])[0] << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
             if address >> 27: address -= 1 << 28 # extend sign from MSB (bit 27)
             return base + address
-        elif FindRegHex(r"[10]$", byte_array, onlyFirstMatch=True): # ADR instruction
+        elif FindRegHex(r"[10]$", byte_array, onlyOnce=True): # ADR instruction
             address = struct.unpack("<L", byte_array[4:])[0] >> 3 & ((1 << 21) - 1) # discard 8 MSB, discard 3 LSB
             if address >> 20: address -= 1 << 21 # extend sign from MSB (bit 20)
             return base + address
     elif arch == AMD64: # RVA & VA instructions of x64
         address = struct.unpack("<l", byte_array[4:])[0] # address size is 4 bytes
-        if FindRegHex(r"( ( [48 4C] 8D | 0F 10 ) [05 0D 15 1D 25 2D 35 3D] | [E8 E9] )$", byte_array[:4], onlyFirstMatch=True):
+        if FindRegHex(r"([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9]$", byte_array[:4], onlyOnce=True):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHex(r"( [B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97] )$", byte_array[:4], onlyFirstMatch=True):
+        if FindRegHex(r"[B8-BB BD-BF] | 8A [80-84 86-8C 8E-94 96-97]$", byte_array[:4], onlyOnce=True):
             return address # VA reference
     return base
 
@@ -111,11 +109,10 @@ def FindFixes(data, base_offset, end_offset):
 def SplitFatBinary(data):
     (magic, num_archs) = struct.unpack(">2L", data[:4*2])
     if magic == 0xCAFEBABE: # MacOS universal binary
-        header_size = 4*5
         for i in range(num_archs):
             # with open(f"macho_executable{i}", "wb") as file: file.write(data)
-            header_offset = 4*2 + header_size*i
-            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset:header_offset + header_size])
+            header_offset = 4*2 + 4*5*i # header_size = 4*5
+            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset:header_offset + 4*5])
             print(f"[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
             Patch(data, offset, offset + size)
     else:
@@ -150,5 +147,4 @@ def ConvertBetweenAddressAndOffset(sorted_pairs, position):
         if position >= first_part: return position - first_part + second_part
     return None
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
