@@ -37,7 +37,7 @@ def PatchFix(fix, data, base_offset, end_offset, refs, patches):
             p0 = p = Position(offset = match.start(groupIndex))
             if p0.address == None: continue
             if fix.look_behind or (fix.ref and len(match.group(groupIndex)) == 4):
-                p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], FileInfo()['arch']))
+                p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], FileInfo().arch))
             p_info = p.info if p.offset != None and p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind and p.offset != None:
                 if not refs.get(p0.address): refs[p0.address] = fix.name if groupIndex == 0 else '.'.join(fix.name.split('.')[0:groupIndex+1:groupIndex]) # address0 can be equal to address when ref not exist
@@ -48,7 +48,7 @@ def PatchFix(fix, data, base_offset, end_offset, refs, patches):
             if fix.look_behind and refs.get(p0.address, refs.get(p.address)):
                 if not refs.get(p.address): p_info = " " * len(p0.info) # data inside instruction is not reference to anything else
                 ref_info = f"{fix.name} <- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
-                for m in FindRegHex(function_prologue_reghex[FileInfo()['arch']], data, base_offset, p0.offset):
+                for m in FindRegHex(function_prologue_reghex[FileInfo().arch], data, base_offset, p0.offset):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
                 print(f"[-] Found at {Position(offset = o).info} {ref_info}")
     if fix.patch != '' and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
@@ -65,8 +65,8 @@ function_prologue_reghex = {
 
 class Position:
     def __init__(self, address = None, offset = None):
-        self.address = address if address != None else ConvertBetweenAddressAndOffset(FileInfo()['offset2address'], offset)
-        self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(FileInfo()['address2offset'], address)
+        self.address = address if address != None else ConvertBetweenAddressAndOffset(FileInfo().offset2address, offset)
+        self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(FileInfo().address2offset, address)
         self.info = f"a:0x{self.address:x} o:0x{self.offset:06x}" if self.address != None and self.offset != None else ''
 
 def Ref2Address(base, byte_array, arch):
@@ -122,28 +122,28 @@ def SplitFatBinary(data):
         Patch(data, 0, len(data))
 
 def FileInfo(data = b'', display_offset = None):
-    if len(data) == 0 and FileInfo.cache != None: return FileInfo.cache
+    if len(data) == 0: return FileInfo
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
-        arch = { 0x8664: AMD64, 0xAA64: ARM64}[pe.FILE_HEADER.Machine] # die on unknown arch
+        FileInfo.arch = { 0x8664: AMD64, 0xAA64: ARM64}[pe.FILE_HEADER.Machine] # die on unknown arch
         sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData) for s in pe.sections]
     elif re.search(b"^\x7FELF", data):
         from elftools.elf.elffile import ELFFile # pip3 install pyelftools
         import io
         elf = ELFFile(io.BytesIO(data))
-        arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64}[elf.header['e_machine']] # die on unknown arch
+        FileInfo.arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64}[elf.header['e_machine']] # die on unknown arch
         sections = [(s.header['sh_addr'], s.header['sh_offset']) for s in elf.iter_sections()]
     elif re.search(b"^\xCF\xFA\xED\xFE", data):
         from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
-        arch = { 0x1000007: AMD64, 0x100000c: ARM64}[macho.get_header().cputype] # die on unknown arch
+        FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64}[macho.get_header().cputype] # die on unknown arch
         sections = [(s.addr, s.offset) for s in macho.get_sections()]
     else:
         exit("[!] Can not detect file type")
-    address2offset = sorted([(addr, offset + display_offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
-    FileInfo.cache = {'arch': arch, 'address2offset': address2offset, 'offset2address': sorted([(offset, addr) for addr, offset in address2offset], reverse=True)} # sort by offset
-    return FileInfo.cache
+    FileInfo.address2offset = sorted([(addr, offset + display_offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
+    FileInfo.offset2address = sorted([(offset, addr) for addr, offset in FileInfo.address2offset], reverse=True) # sort by offset
+    return FileInfo
 
 def ConvertBetweenAddressAndOffset(sorted_pairs, position):
     for first_part, second_part in sorted_pairs:
