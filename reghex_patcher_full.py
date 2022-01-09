@@ -40,8 +40,8 @@ def PatchFix(fix, data, base_offset, end_offset, refs, patches):
                 p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], FileInfo().arch))
             p_info = p.info if p.offset != None and p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind and p.offset != None:
-                if not refs.get(p0.address): refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # address0 can be equal to address when ref not exist
-                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # keep the part after the dot
+                refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
+                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
                 patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if len(patch): print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} {patch.hex(' ')}")
                 if len(patch): patches[p.offset] = patch
