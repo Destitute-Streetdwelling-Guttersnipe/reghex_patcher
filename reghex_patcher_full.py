@@ -3,7 +3,7 @@ import re, sys, struct
 import patches as Fixes
 
 def main():
-    print(f"[-] ---- {credits}\n")
+    print(f"[-] ---- {credits}")
     input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file [output_file]")
     output_file = sys.argv[2] if len(sys.argv) > 2 else input_file
     PatchFile(input_file, output_file)
@@ -101,7 +101,7 @@ def FindFixes(data, base_offset, end_offset):
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, data, base_offset, end_offset):
             detected |= set([ fix.name, *m.groups() ])
-            print(f"[-] Detected at 0x{m.start():x}: {fix.name} {m.groups()} in {m.group(0)}")
+            print(f"\n[-] Detected at 0x{m.start():x}: {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes
     exit("[!] Can not find fixes for target file")
@@ -113,7 +113,7 @@ def SplitFatBinary(data):
             # with open(f"macho_executable{i}", "wb") as file: file.write(data)
             header_offset = 4*2 + 4*5*i # header_size = 4*5
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset:header_offset + 4*5])
-            print(f"[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
+            print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
             Patch(data, offset, offset + size)
     else:
         Patch(data, 0, len(data))
