@@ -33,16 +33,16 @@ def Patch(data, base_offset, end_offset):
 def PatchFix(fix, data, base_offset, end_offset, refs, patches):
     p = None
     for match in FindRegHex(fix.reghex, data, base_offset, end_offset):
-        for groupIndex in range(1, match.lastindex + 1) if match.lastindex else range(1):
-            p0 = p = Position(offset = match.start(groupIndex))
+        for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
+            p0 = p = Position(offset = match.start(i))
             if p0.address == None: continue
-            if fix.look_behind or (fix.ref and len(match.group(groupIndex)) == 4):
+            if fix.look_behind or (fix.ref and len(match.group(i)) == 4):
                 p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], FileInfo().arch))
             p_info = p.info if p.offset != None and p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind and p.offset != None:
-                if not refs.get(p0.address): refs[p0.address] = fix.name if groupIndex == 0 else '.'.join(fix.name.split('.')[0:groupIndex+1:groupIndex]) # address0 can be equal to address when ref not exist
-                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[groupIndex] # keep the part after the dot
-                patch = bytes.fromhex(fix.patch[groupIndex-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
+                if not refs.get(p0.address): refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # address0 can be equal to address when ref not exist
+                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # keep the part after the dot
+                patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if len(patch): print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} {patch.hex(' ')}")
                 if len(patch): patches[p.offset] = patch
             if fix.look_behind and refs.get(p0.address, refs.get(p.address)):
