@@ -20,12 +20,11 @@ def FindRegHex(reghex, data, onlyOnce = False):
     return next(it, None) if onlyOnce else it
 
 def Patch(patched, data, base_offset = 0):
-    refs = {}
     FileInfo(data, base_offset) # cache result inside FileInfo
     for fix in FindFixes(data):
-        PatchFix(fix, patched, data, refs, FileInfo().arch)
+        PatchFix(fix, patched, data, FileInfo().arch)
 
-def PatchFix(fix, patched, data, refs, arch):
+def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to default value in next calls
     p = None
     for match in FindRegHex(fix.reghex, data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
