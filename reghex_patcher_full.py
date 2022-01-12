@@ -41,14 +41,14 @@ def PatchFix(fix, data, base_offset, end_offset, refs, patches):
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
                 patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
-                if len(patch): print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} {patch.hex(' ')}")
+                if len(patch): print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                 if len(patch): patches[p.offset] = patch
-            if fix.look_behind and refs.get(p0.address, refs.get(p.address)):
+            if fix.look_behind and fix.name == FileInfo().arch and refs.get(p0.address, refs.get(p.address)):
                 if not refs.get(p.address): p_info = " " * len(p0.info) # data inside instruction is not reference to anything else
-                ref_info = f"{fix.name} <- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
+                ref_info = f"<- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[FileInfo().arch], data, base_offset, p0.offset):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
-                print(f"[-] Found at {Position(offset = o).info} {ref_info}")
+                print(f"[-] Found fn {Position(offset = o).info} {ref_info}")
     if fix.patch != '' and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
@@ -65,7 +65,7 @@ class Position:
     def __init__(self, address = None, offset = None):
         self.address = address if address != None else ConvertBetweenAddressAndOffset(FileInfo().offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(FileInfo().address2offset, address)
-        self.info = f"a:0x{self.address:x} o:0x{self.offset:06x}" if self.address != None and self.offset != None else ''
+        self.info = f"a:0x{self.address:x} o:0x{self.offset:06x}" if self.address and self.offset else ''
 
 def Ref2Address(base, byte_array, arch):
     # TODO: use byteorder from FileInfo(data)
@@ -101,7 +101,7 @@ def FindFixes(data, base_offset, end_offset):
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, data, base_offset, end_offset):
             detected |= set([ fix.name, *m.groups() ])
-            print(f"\n[-] Detected at 0x{m.start():x}: {fix.name} {m.groups()} in {m.group(0)}")
+            print(f"\n[-] Spotted at 0x{m.start():x}: {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes
     exit("[!] Can not find fixes for target file")
@@ -112,7 +112,7 @@ def SplitFatBinary(data):
         for i in range(num_archs):
             # with open(f"macho_executable{i}", "wb") as file: file.write(data)
             header_offset = 4*2 + 4*5*i # header_size = 4*5
-            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset:header_offset + 4*5])
+            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset : header_offset + 4*5])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
             Patch(data, offset, offset + size)
     else:
