@@ -23,16 +23,16 @@ def Patch(patched, data, base_offset = 0):
     refs = {}
     FileInfo(data, base_offset) # cache result inside FileInfo
     for fix in FindFixes(data):
-        PatchFix(fix, patched, data, refs)
+        PatchFix(fix, patched, data, refs, FileInfo().arch)
 
-def PatchFix(fix, patched, data, refs):
+def PatchFix(fix, patched, data, refs, arch):
     p = None
     for match in FindRegHex(fix.reghex, data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(offset = match.start(i))
             if p0.address == None: continue
             if fix.look_behind or (fix.ref and len(match.group(i)) == 4):
-                p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], FileInfo().arch))
+                p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], arch))
             p_info = p.info if p.offset != None and p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind and p.offset != None:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
@@ -40,10 +40,10 @@ def PatchFix(fix, patched, data, refs):
                 patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if len(patch): print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                 if len(patch): patched[p.patch_offset : p.patch_offset + len(patch)] = patch
-            if fix.look_behind and fix.name == FileInfo().arch and refs.get(p0.address, refs.get(p.address)):
+            if fix.look_behind and fix.name == arch and refs.get(p0.address, refs.get(p.address)):
                 if not refs.get(p.address): p_info = " " * len(p0.info) # data inside instruction is not reference to anything else
                 ref_info = f"<- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
-                for m in FindRegHex(function_prologue_reghex[FileInfo().arch], data[0 : p0.offset]):
+                for m in FindRegHex(function_prologue_reghex[arch], data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
                 print(f"[-] Found fn {Position(offset = o).info} {ref_info}")
     if fix.patch != '' and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
