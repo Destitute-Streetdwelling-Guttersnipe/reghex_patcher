@@ -19,17 +19,13 @@ def FindRegHex(reghex, data, onlyOnce = False):
     it = re.finditer(regex.replace(b' ', b''), data, re.DOTALL) # remove all spaces
     return next(it, None) if onlyOnce else it
 
-def Patch(data, base_offset = 0):
-    patches = {}
+def Patch(patched, data, base_offset = 0):
     refs = {}
     FileInfo(data, base_offset) # cache result inside FileInfo
     for fix in FindFixes(data):
-        PatchFix(fix, data, refs, patches)
-    for offset in patches:
-        data[offset : offset + len(patches[offset])] = patches[offset]
-    return data
+        PatchFix(fix, patched, data, refs)
 
-def PatchFix(fix, data, refs, patches):
+def PatchFix(fix, patched, data, refs):
     p = None
     for match in FindRegHex(fix.reghex, data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
@@ -43,7 +39,7 @@ def PatchFix(fix, data, refs, patches):
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
                 patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if len(patch): print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
-                if len(patch): patches[p.offset] = patch
+                if len(patch): patched[p.patch_offset : p.patch_offset + len(patch)] = patch
             if fix.look_behind and fix.name == FileInfo().arch and refs.get(p0.address, refs.get(p.address)):
                 if not refs.get(p.address): p_info = " " * len(p0.info) # data inside instruction is not reference to anything else
                 ref_info = f"<- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
@@ -66,7 +62,8 @@ class Position:
     def __init__(self, address = None, offset = None):
         self.address = address if address != None else ConvertBetweenAddressAndOffset(FileInfo().offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(FileInfo().address2offset, address)
-        self.info = f"a:0x{self.address:x} o:0x{self.offset + FileInfo().base_offset:06x}" if self.address and self.offset else ''
+        self.patch_offset = self.offset + FileInfo().base_offset if self.offset != None else None
+        self.info = f"a:0x{self.address:x} o:0x{self.patch_offset:06x}" if self.address and self.patch_offset else ''
 
 def Ref2Address(base, byte_array, arch):
     # TODO: use byteorder from FileInfo(data)
@@ -115,9 +112,9 @@ def SplitFatBinary(data):
             header_offset = 4*2 + 4*5*i # header_size = 4*5
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset : header_offset + 4*5])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
-            data[offset : offset + size] = Patch(data[offset : offset + size], offset)
+            Patch(data, data[offset : offset + size], offset)
     else:
-        data[:] = Patch(data)
+        Patch(data, data[:])
 
 def FileInfo(data = b'', base_offset = 0):
     if len(data) == 0: return FileInfo
