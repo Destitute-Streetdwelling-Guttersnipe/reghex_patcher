@@ -14,23 +14,24 @@ def PatchFile(input_file, output_file):
     with open(output_file, "wb") as file: file.write(data)
     print(f"[+] Patched file saved to {output_file}")
 
-def FindRegHex(reghex, data, base_offset = 0, end_offset = None, onlyOnce = False):
-    regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex).replace(' ', ''), 'utf-8') # escape hex bytes & remove all spaces
-    it = re.compile(regex, re.DOTALL).finditer(data, base_offset, end_offset or len(data))
+def FindRegHex(reghex, data, onlyOnce = False):
+    regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), 'utf-8') # escape hex bytes
+    it = re.finditer(regex.replace(b' ', b''), data, re.DOTALL) # remove all spaces
     return next(it, None) if onlyOnce else it
 
-def Patch(data, base_offset, end_offset):
+def Patch(data, base_offset = 0):
     patches = {}
     refs = {}
-    FileInfo(data[base_offset:end_offset], base_offset) # cache result inside FileInfo
-    for fix in FindFixes(data, base_offset, end_offset):
-        PatchFix(fix, data, base_offset, end_offset, refs, patches)
+    FileInfo(data, base_offset) # cache result inside FileInfo
+    for fix in FindFixes(data):
+        PatchFix(fix, data, refs, patches)
     for offset in patches:
         data[offset : offset + len(patches[offset])] = patches[offset]
+    return data
 
-def PatchFix(fix, data, base_offset, end_offset, refs, patches):
+def PatchFix(fix, data, refs, patches):
     p = None
-    for match in FindRegHex(fix.reghex, data, base_offset, end_offset):
+    for match in FindRegHex(fix.reghex, data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(offset = match.start(i))
             if p0.address == None: continue
@@ -46,7 +47,7 @@ def PatchFix(fix, data, base_offset, end_offset, refs, patches):
             if fix.look_behind and fix.name == FileInfo().arch and refs.get(p0.address, refs.get(p.address)):
                 if not refs.get(p.address): p_info = " " * len(p0.info) # data inside instruction is not reference to anything else
                 ref_info = f"<- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
-                for m in FindRegHex(function_prologue_reghex[FileInfo().arch], data, base_offset, p0.offset):
+                for m in FindRegHex(function_prologue_reghex[FileInfo().arch], data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
                 print(f"[-] Found fn {Position(offset = o).info} {ref_info}")
     if fix.patch != '' and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
@@ -65,7 +66,7 @@ class Position:
     def __init__(self, address = None, offset = None):
         self.address = address if address != None else ConvertBetweenAddressAndOffset(FileInfo().offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(FileInfo().address2offset, address)
-        self.info = f"a:0x{self.address:x} o:0x{self.offset:06x}" if self.address and self.offset else ''
+        self.info = f"a:0x{self.address:x} o:0x{self.offset + FileInfo().base_offset:06x}" if self.address and self.offset else ''
 
 def Ref2Address(base, byte_array, arch):
     # TODO: use byteorder from FileInfo(data)
@@ -96,12 +97,12 @@ def Ref2Address(base, byte_array, arch):
             return address # VA reference
     return base
 
-def FindFixes(data, base_offset, end_offset):
+def FindFixes(data):
     detected = set()
     for fix in Fixes.detections:
-        for m in FindRegHex(fix.reghex, data, base_offset, end_offset):
+        for m in FindRegHex(fix.reghex, data):
             detected |= set([ fix.name, *m.groups() ])
-            print(f"\n[-] Spotted at 0x{m.start():x}: {fix.name} {m.groups()} in {m.group(0)}")
+            print(f"\n[-] Spotted at {Position(offset = m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes
     exit("[!] Can not find fixes for target file")
@@ -114,11 +115,11 @@ def SplitFatBinary(data):
             header_offset = 4*2 + 4*5*i # header_size = 4*5
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset : header_offset + 4*5])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
-            Patch(data, offset, offset + size)
+            data[offset : offset + size] = Patch(data[offset : offset + size], offset)
     else:
-        Patch(data, 0, len(data))
+        data[:] = Patch(data)
 
-def FileInfo(data = b'', display_offset = None):
+def FileInfo(data = b'', base_offset = 0):
     if len(data) == 0: return FileInfo
     if re.search(b"^MZ", data):
         import pefile
@@ -138,8 +139,9 @@ def FileInfo(data = b'', display_offset = None):
         sections = [(s.addr, s.offset) for s in macho.get_sections()]
     else:
         exit("[!] Can not detect file type")
-    FileInfo.address2offset = sorted([(addr, offset + display_offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
+    FileInfo.address2offset = sorted([(addr, offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
     FileInfo.offset2address = sorted([(offset, addr) for addr, offset in FileInfo.address2offset], reverse=True) # sort by offset
+    FileInfo.base_offset = base_offset
     return FileInfo
 
 def ConvertBetweenAddressAndOffset(sorted_pairs, position):
