@@ -29,7 +29,7 @@ def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to defaul
     for match in FindRegHex(fix.reghex, data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(offset = match.start(i))
-            if p0.address != None and (fix.look_behind or (fix.ref and len(match.group(i)) == 4)):
+            if p0.address != None and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)):
                 p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], arch))
             p_info = p.info if p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind:

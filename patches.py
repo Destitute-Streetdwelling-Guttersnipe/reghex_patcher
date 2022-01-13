@@ -19,7 +19,7 @@ ret0_rdi = "48 31 C0  48 8B 17  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx,
 # when fix.ref is True, any matching groups that has 4 bytes will be check if it's a reference to a string/function
 # fix.patch can be a string or a list of strings to patch each matching group
 # fix.look_behind is used to find the function that contains the matching groups
-Fix = collections.namedtuple('Fix', 'name reghex patch ref look_behind', defaults=('', '', '', False, None)) # reghex is regex with hex bytes
+Fix = collections.namedtuple('Fix', 'name reghex patch ref arch look_behind', defaults=('', '', '', False, '', None)) # reghex is regex with hex bytes
 st_wind_fixes = [
 ]
 st_linux_fixes = [
@@ -47,10 +47,10 @@ ref_detections = [
                           + r"(?<= . [BD BF] | 41 BE ) . |" # mov ebp, ?; mov edi, ?; mov r14d, ?
                           + r"(?<=  8A [80-84 86-8C 8E-94 96-97] | . [B8-BB BD-BF] ) . |" ## mov ?l, byte ptr [r? + ?]; mov e?, ?; mov r?, ?
                           + r"(?<= . . [E8 E9] | (?:[48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] ) .", ## call ?; jmp ?; lea r?, [rip + ?]; movups xmm0, xmmword ptr [rip + ?]
-        ref=True, look_behind=True),
+        arch="amd64", look_behind=True),
     # detection for number, string and function inside ARM64 instructions
     Fix(name="arm64", reghex=r". (?=. . [10 94 97 14 17]) | (?<=[90 B0 D0 F0])  . (?=. . 91)", ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
-        ref=True, look_behind=True),
+        arch="arm64", look_behind=True),
 ]
 st_delay_fixes = [ # extend the delay period
 ]
