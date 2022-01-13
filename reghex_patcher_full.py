@@ -29,8 +29,7 @@ def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to defaul
     for match in FindRegHex(fix.reghex, data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(offset = match.start(i))
-            if p0.address == None: continue # skip offset that's not in any section
-            if fix.look_behind or (fix.ref and len(match.group(i)) == 4):
+            if p0.address != None and (fix.look_behind or (fix.ref and len(match.group(i)) == 4)):
                 p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], arch))
             p_info = p.info if p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind:
@@ -39,7 +38,7 @@ def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to defaul
                 patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if patch: print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                 if patch and p.patch_offset: patched[p.patch_offset : p.patch_offset + len(patch)] = patch
-            if fix.look_behind and fix.name == arch and refs.get(p0.address, refs.get(p.address)):
+            elif p0.address != None and fix.name == arch and refs.get(p0.address, refs.get(p.address)):
                 ref_info = refs.get(p0.address, '.' + refs.get(p.address, '?'))
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
