@@ -22,7 +22,7 @@ def FindRegHex(reghex, data, onlyOnce = False):
 def Patch(patched, data, base_offset = 0):
     FileInfo(data, base_offset) # cache result inside FileInfo
     for fix in FindFixes(data):
-        PatchFix(fix, patched, data, FileInfo().arch)
+        if not fix.arch or fix.arch == FileInfo().arch: PatchFix(fix, patched, data, FileInfo().arch)
 
 def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to default value in next calls
     p = None
@@ -38,7 +38,7 @@ def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to defaul
                 patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if patch: print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                 if patch and p.patch_offset: patched[p.patch_offset : p.patch_offset + len(patch)] = patch
-            elif p0.address != None and fix.name == arch and refs.get(p0.address, refs.get(p.address)):
+            elif p0.address != None and refs.get(p0.address, refs.get(p.address)):
                 ref_info = refs.get(p0.address, '.' + refs.get(p.address, '?'))
                 for m in FindRegHex(function_prologue_reghex[arch], data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
