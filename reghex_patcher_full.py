@@ -1,5 +1,5 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
-import re, sys, struct
+import re, sys, struct, io
 import patches as Fixes
 
 def main():
@@ -26,21 +26,21 @@ def PatchFix(fix, patched, file, last_o = None, refs = {}): # refs is not reset 
     p = None
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
-            p0 = p = Position(file, offset = match.start(i))
+            p0 = p = Position(file, offset=match.start(i))
             if p0.address != None and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)):
-                p = Position(file, address = Ref2Address(p0.address, file.data[p0.offset-4 : p0.offset+4], file.arch))
+                p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-4 : p0.offset+4], file.arch))
             p_info = p.info if p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
                 patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
                 if patch: print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
-                if patch and p.patch_offset: patched[p.patch_offset : p.patch_offset + len(patch)] = patch
+                if patch and p.file_o: patched[p.file_o : p.file_o + len(patch)] = patch
             elif p0.address != None and refs.get(p0.address, refs.get(p.address)):
                 ref_info = refs.get(p0.address, '.' + refs.get(p.address, '?'))
                 for m in FindRegHex(function_prologue_reghex[file.arch], file.data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
-                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset = o).info} <- {p0.info} -> {p_info} {ref_info}")
+                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=o).info} <- {p0.info} -> {p_info} {ref_info}")
                 last_o = o
     if fix.patch and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
@@ -58,11 +58,10 @@ class Position:
     def __init__(self, file, address = None, offset = None):
         self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
-        self.patch_offset = self.offset + file.base_offset if self.offset != None else None
-        self.info = f"a:0x{self.address or 0:06x} " + (f"o:0x{self.patch_offset:06x}" if self.patch_offset else ' ' * 10)
+        self.file_o = self.offset + file.base_offset if self.offset != None else None
+        self.info = f"a:0x{self.address or 0:06x} " + (f"o:0x{self.file_o:06x}" if self.file_o else ' ' * 10)
 
 def Ref2Address(base, byte_array, arch):
-    # TODO: use byteorder from FileInfo(data)
     if arch == ARM64: # PC relative instructions of arm64
         if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, onlyOnce=True): # ADRP & ADD instructions
             (instr, instr2) = struct.unpack("<2L", byte_array) # 2 unsigned long in little-endian
@@ -95,7 +94,7 @@ def FindFixes(file):
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, file.data):
             detected |= set([ fix.name, *m.groups() ])
-            print(f"\n[-] Spotted at {Position(file, offset = m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
+            print(f"\n[-] Spotted at {Position(file, offset=m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return [fix for fix in fixes if not fix.arch or fix.arch == file.arch] # filter out different arch
     exit("[!] Can not find fixes for target file")
@@ -116,18 +115,17 @@ def FileInfo(data = b'', base_offset = 0):
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
-        FileInfo.arch = { 0x8664: AMD64, 0xAA64: ARM64}[pe.FILE_HEADER.Machine] # die on unknown arch
+        FileInfo.arch = { 0x8664: AMD64, 0xAA64: ARM64 }[pe.FILE_HEADER.Machine] # die on unknown arch
         sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
     elif re.search(b"^\x7FELF", data):
         from elftools.elf.elffile import ELFFile # pip3 install pyelftools
-        import io
         elf = ELFFile(io.BytesIO(data))
-        FileInfo.arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64}[elf.header['e_machine']] # die on unknown arch
+        FileInfo.arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64 }[elf.header['e_machine']] # die on unknown arch
         sections = [(s.header['sh_addr'], s.header['sh_offset'], s.header['sh_size']) for s in elf.iter_sections()]
     elif re.search(b"^\xCF\xFA\xED\xFE", data):
         from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
-        FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64}[macho.get_header().cputype] # die on unknown arch
+        FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64 }[macho.get_header().cputype] # die on unknown arch
         sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
     else:
         exit("[!] Can not detect file type")
