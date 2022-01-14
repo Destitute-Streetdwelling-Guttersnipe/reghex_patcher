@@ -32,15 +32,14 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
-                patch = bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch) # use the whole fix.patch if it's not a list
-                if patch: print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
-                if patch and p.file_o: patched[p.file_o : p.file_o + len(patch)] = patch
+                if patch := bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch): # use the whole fix.patch if it's not a list
+                    print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
+                    if p.file_o: patched[p.file_o : p.file_o + len(patch)] = patch
             elif p0.address != None and refs.get(p0.address, refs.get(p.address)):
                 ref_info = f"<- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[file.arch], file.data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
-                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=o).info} {ref_info}")
-                last_o = o
+                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=(last_o := o)).info} {ref_info}")
     if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
@@ -130,8 +129,7 @@ def FileInfo(data = b'', base_offset = 0):
         exit("[!] Can not detect file type")
     FileInfo.address2offset = sorted([(addr, offset, size) for addr, offset, size in sections if addr and offset], reverse=True) # sort by address
     FileInfo.offset2address = sorted([(offset, addr, size) for addr, offset, size in FileInfo.address2offset], reverse=True) # sort by offset
-    FileInfo.base_offset = base_offset
-    FileInfo.data = data
+    FileInfo.data, FileInfo.base_offset = data, base_offset
     return FileInfo
 
 def ConvertBetweenAddressAndOffset(sections, position):
