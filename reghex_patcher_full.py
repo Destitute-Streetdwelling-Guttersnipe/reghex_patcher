@@ -22,8 +22,7 @@ def FindRegHex(reghex, data, onlyOnce = False):
 def Patch(patched, file):
     for fix in FindFixes(file): PatchFix(fix, patched, file)
 
-def PatchFix(fix, patched, file, last_o = None, refs = {}): # refs is not reset to default value in next calls
-    p = None
+def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs is not reset to default value in next calls
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(file, offset=match.start(i))
@@ -37,12 +36,12 @@ def PatchFix(fix, patched, file, last_o = None, refs = {}): # refs is not reset 
                 if patch: print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                 if patch and p.file_o: patched[p.file_o : p.file_o + len(patch)] = patch
             elif p0.address != None and refs.get(p0.address, refs.get(p.address)):
-                ref_info = refs.get(p0.address, '.' + refs.get(p.address, '?'))
+                ref_info = f"<- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
                 for m in FindRegHex(function_prologue_reghex[file.arch], file.data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
-                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=o).info} <- {p0.info} -> {p_info} {ref_info}")
+                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=o).info} {ref_info}")
                 last_o = o
-    if fix.patch and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
+    if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
