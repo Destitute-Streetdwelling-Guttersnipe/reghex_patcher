@@ -19,18 +19,17 @@ def FindRegHex(reghex, data, onlyOnce = False):
     it = re.finditer(regex.replace(b' ', b''), data, re.DOTALL) # remove all spaces
     return next(it, None) if onlyOnce else it
 
-def Patch(patched, data, base_offset = 0):
-    file = FileInfo(data, base_offset)
-    for fix in FindFixes(data, file):
-        if not fix.arch or fix.arch == file.arch: PatchFix(fix, patched, data, file)
+def Patch(patched, file):
+    for fix in FindFixes(file):
+        if not fix.arch or fix.arch == file.arch: PatchFix(fix, patched, file)
 
-def PatchFix(fix, patched, data, file, refs = {}): # refs is not reset to default value in next calls
+def PatchFix(fix, patched, file, refs = {}): # refs is not reset to default value in next calls
     p = None
-    for match in FindRegHex(fix.reghex, data):
+    for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(file, offset = match.start(i))
             if p0.address != None and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)):
-                p = Position(file, address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], file.arch))
+                p = Position(file, address = Ref2Address(p0.address, file.data[p0.offset-4 : p0.offset+4], file.arch))
             p_info = p.info if p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
@@ -40,7 +39,7 @@ def PatchFix(fix, patched, data, file, refs = {}): # refs is not reset to defaul
                 if patch and p.patch_offset: patched[p.patch_offset : p.patch_offset + len(patch)] = patch
             elif p0.address != None and refs.get(p0.address, refs.get(p.address)):
                 ref_info = refs.get(p0.address, '.' + refs.get(p.address, '?'))
-                for m in FindRegHex(function_prologue_reghex[file.arch], data[0 : p0.offset]):
+                for m in FindRegHex(function_prologue_reghex[file.arch], file.data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
                 print(f"[-] Found fn {Position(file, offset = o).info} <- {p0.info} -> {p_info} {ref_info}")
     if fix.patch and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
@@ -91,10 +90,10 @@ def Ref2Address(base, byte_array, arch):
             return address # VA reference
     return base
 
-def FindFixes(data, file):
+def FindFixes(file):
     detected = set()
     for fix in Fixes.detections:
-        for m in FindRegHex(fix.reghex, data):
+        for m in FindRegHex(fix.reghex, file.data):
             detected |= set([ fix.name, *m.groups() ])
             print(f"\n[-] Spotted at {Position(file, offset = m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
@@ -109,9 +108,9 @@ def SplitFatBinary(data):
             header_offset = 4*2 + 4*5*i # header_size = 4*5
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset : header_offset + 4*5])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
-            Patch(data, data[offset : offset + size], offset)
+            Patch(data, FileInfo(data[offset : offset + size], offset))
     else:
-        Patch(data, data[:])
+        Patch(data, FileInfo(data[:]))
 
 def FileInfo(data = b'', base_offset = 0):
     if re.search(b"^MZ", data):
@@ -135,6 +134,7 @@ def FileInfo(data = b'', base_offset = 0):
     FileInfo.address2offset = sorted([(addr, offset, size) for addr, offset, size in sections if addr and offset], reverse=True) # sort by address
     FileInfo.offset2address = sorted([(offset, addr, size) for addr, offset, size in FileInfo.address2offset], reverse=True) # sort by offset
     FileInfo.base_offset = base_offset
+    FileInfo.data = data
     return FileInfo
 
 def ConvertBetweenAddressAndOffset(sections, position):
