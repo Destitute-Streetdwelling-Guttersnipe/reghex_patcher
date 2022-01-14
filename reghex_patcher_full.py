@@ -20,8 +20,7 @@ def FindRegHex(reghex, data, onlyOnce = False):
     return next(it, None) if onlyOnce else it
 
 def Patch(patched, file):
-    for fix in FindFixes(file):
-        if not fix.arch or fix.arch == file.arch: PatchFix(fix, patched, file)
+    for fix in FindFixes(file): PatchFix(fix, patched, file)
 
 def PatchFix(fix, patched, file, refs = {}): # refs is not reset to default value in next calls
     p = None
@@ -97,7 +96,7 @@ def FindFixes(file):
             detected |= set([ fix.name, *m.groups() ])
             print(f"\n[-] Spotted at {Position(file, offset = m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
-        if set(tags) == detected: return fixes
+        if set(tags) == detected: return [fix for fix in fixes if not fix.arch or fix.arch == file.arch] # filter out different arch
     exit("[!] Can not find fixes for target file")
 
 def SplitFatBinary(data):
