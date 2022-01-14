@@ -119,28 +119,28 @@ def FileInfo(data = b'', base_offset = 0):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
         FileInfo.arch = { 0x8664: AMD64, 0xAA64: ARM64}[pe.FILE_HEADER.Machine] # die on unknown arch
-        sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData) for s in pe.sections]
+        sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
     elif re.search(b"^\x7FELF", data):
         from elftools.elf.elffile import ELFFile # pip3 install pyelftools
         import io
         elf = ELFFile(io.BytesIO(data))
         FileInfo.arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64}[elf.header['e_machine']] # die on unknown arch
-        sections = [(s.header['sh_addr'], s.header['sh_offset']) for s in elf.iter_sections()]
+        sections = [(s.header['sh_addr'], s.header['sh_offset'], s.header['sh_size']) for s in elf.iter_sections()]
     elif re.search(b"^\xCF\xFA\xED\xFE", data):
         from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
         FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64}[macho.get_header().cputype] # die on unknown arch
-        sections = [(s.addr, s.offset) for s in macho.get_sections()]
+        sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
     else:
         exit("[!] Can not detect file type")
-    FileInfo.address2offset = sorted([(addr, offset) for addr, offset in sections if addr > 0 and offset > 0], reverse=True) # sort by address
-    FileInfo.offset2address = sorted([(offset, addr) for addr, offset in FileInfo.address2offset], reverse=True) # sort by offset
+    FileInfo.address2offset = sorted([(addr, offset, size) for addr, offset, size in sections if addr and offset], reverse=True) # sort by address
+    FileInfo.offset2address = sorted([(offset, addr, size) for addr, offset, size in FileInfo.address2offset], reverse=True) # sort by offset
     FileInfo.base_offset = base_offset
     return FileInfo
 
-def ConvertBetweenAddressAndOffset(sorted_pairs, position):
-    for first_part, second_part in sorted_pairs:
-        if position >= first_part: return position - first_part + second_part
+def ConvertBetweenAddressAndOffset(sections, position):
+    for start, converted_start, size in sections:
+        if start <= position < start + size: return position - start + converted_start
     return None
 
 if __name__ == "__main__": main()
