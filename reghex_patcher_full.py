@@ -20,17 +20,17 @@ def FindRegHex(reghex, data, onlyOnce = False):
     return next(it, None) if onlyOnce else it
 
 def Patch(patched, data, base_offset = 0):
-    FileInfo(data, base_offset) # cache result inside FileInfo
-    for fix in FindFixes(data):
-        if not fix.arch or fix.arch == FileInfo().arch: PatchFix(fix, patched, data, FileInfo().arch)
+    file = FileInfo(data, base_offset)
+    for fix in FindFixes(data, file):
+        if not fix.arch or fix.arch == file.arch: PatchFix(fix, patched, data, file)
 
-def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to default value in next calls
+def PatchFix(fix, patched, data, file, refs = {}): # refs is not reset to default value in next calls
     p = None
     for match in FindRegHex(fix.reghex, data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
-            p0 = p = Position(offset = match.start(i))
+            p0 = p = Position(file, offset = match.start(i))
             if p0.address != None and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)):
-                p = Position(address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], arch))
+                p = Position(file, address = Ref2Address(p0.address, data[p0.offset-4 : p0.offset+4], file.arch))
             p_info = p.info if p.address != p0.address else " " * len(p0.info)
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
@@ -40,9 +40,9 @@ def PatchFix(fix, patched, data, arch, refs = {}): # refs is not reset to defaul
                 if patch and p.patch_offset: patched[p.patch_offset : p.patch_offset + len(patch)] = patch
             elif p0.address != None and refs.get(p0.address, refs.get(p.address)):
                 ref_info = refs.get(p0.address, '.' + refs.get(p.address, '?'))
-                for m in FindRegHex(function_prologue_reghex[arch], data[0 : p0.offset]):
+                for m in FindRegHex(function_prologue_reghex[file.arch], data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
-                print(f"[-] Found fn {Position(offset = o).info} <- {p0.info} -> {p_info} {ref_info}")
+                print(f"[-] Found fn {Position(file, offset = o).info} <- {p0.info} -> {p_info} {ref_info}")
     if fix.patch and not p: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
@@ -56,10 +56,10 @@ function_prologue_reghex = {
 }
 
 class Position:
-    def __init__(self, address = None, offset = None):
-        self.address = address if address != None else ConvertBetweenAddressAndOffset(FileInfo().offset2address, offset)
-        self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(FileInfo().address2offset, address)
-        self.patch_offset = self.offset + FileInfo().base_offset if self.offset != None else None
+    def __init__(self, file, address = None, offset = None):
+        self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
+        self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
+        self.patch_offset = self.offset + file.base_offset if self.offset != None else None
         self.info = f"a:0x{self.address or 0:06x} " + (f"o:0x{self.patch_offset:06x}" if self.patch_offset else ' ' * 10)
 
 def Ref2Address(base, byte_array, arch):
@@ -91,12 +91,12 @@ def Ref2Address(base, byte_array, arch):
             return address # VA reference
     return base
 
-def FindFixes(data):
+def FindFixes(data, file):
     detected = set()
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, data):
             detected |= set([ fix.name, *m.groups() ])
-            print(f"\n[-] Spotted at {Position(offset = m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
+            print(f"\n[-] Spotted at {Position(file, offset = m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
         if set(tags) == detected: return fixes
     exit("[!] Can not find fixes for target file")
@@ -114,7 +114,6 @@ def SplitFatBinary(data):
         Patch(data, data[:])
 
 def FileInfo(data = b'', base_offset = 0):
-    if len(data) == 0: return FileInfo
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
