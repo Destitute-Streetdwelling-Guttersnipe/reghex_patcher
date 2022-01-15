@@ -36,20 +36,22 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
                     print(f"[+] Patch at {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                     if p.file_o: patched[p.file_o : p.file_o + len(patch)] = patch
             elif p0.address != None and 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))):
-                for m in FindRegHex(function_prologue_reghex[file.arch], file.data[0 : p0.offset]):
-                    if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
+                o = LastFunction(file.data[0 : p0.offset], file.arch)
                 print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=(last_o := o)).info} <- {p_info} {ref}")
     if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
 
-function_prologue_reghex = {
-    AMD64:  r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
-          + r"(48 [81 83] EC)?", ## sub rsp, ?,
-    ARM64:  r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
-          + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
-}
+def LastFunction(data, arch):
+    function_prologue = {
+        AMD64:  r"( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 )+" ## push r?x ; push r1? ; mov rbp, rsp ; mov rbp, rsp
+              + r"(48 [81 83] EC)?", ## sub rsp, ?,
+        ARM64:  r"(. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
+              + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
+    }[arch] # die on unknown arch
+    o = [m.start() for m in FindRegHex(function_prologue, data) if len(m.group(0)) > 1]  # NOTE: skip too short match to exclude false positive
+    return o[-1] if len(o) else None
 
 class Position:
     def __init__(self, file, address = None, offset = None):
