@@ -63,9 +63,7 @@ def Ref2Address(base, byte_array, arch):
         (instr, instr2) = struct.unpack("<2L", byte_array) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
         if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, onlyOnce=True): # ADRP & ADD instructions
-            immlo = (instr & 0x60000000) >> 29
-            immhi = (instr & 0xffffe0) >> 3
-            value64 = (immlo | immhi) << 12 # PAGE_SIZE = 0x1000 = 4096
+            value64 = ((instr & 0x60000000) >> 29 | (instr & 0xffffe0) >> 3) << 12 # PAGE_SIZE = 0x1000 = 4096
             imm12 = (instr2 & 0x3ffc00) >> 10
             if instr2 & 0xc00000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
