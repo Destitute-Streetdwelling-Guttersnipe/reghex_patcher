@@ -28,18 +28,17 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
             p0 = p = Position(file, offset=match.start(i))
             if p0.address != None and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)):
                 p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-4 : p0.offset+4], file.arch))
-            p_info = p.info if p.address != p0.address else " " * len(p0.info)
+            p_info = f"{p0.info} -> {p.info if p.address != p0.address else ' ' * len(p0.info)}"
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
                 if patch := bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch): # use the whole fix.patch if it's not a list
-                    print(f"[+] Patch at {p0.info} -> {p_info} {refs[p0.address]} = {patch.hex(' ')}")
+                    print(f"[+] Patch at {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                     if p.file_o: patched[p.file_o : p.file_o + len(patch)] = patch
-            elif p0.address != None and refs.get(p0.address, refs.get(p.address)):
-                ref_info = f"<- {p0.info} -> {p_info} {refs.get(p0.address, '.' + refs.get(p.address, '?'))}"
+            elif p0.address != None and 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))):
                 for m in FindRegHex(function_prologue_reghex[file.arch], file.data[0 : p0.offset]):
                     if len(m.group(0)) > 1: o = m.start() # NOTE: skip too short match to exclude false positive
-                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=(last_o := o)).info} {ref_info}")
+                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=(last_o := o)).info} <- {p_info} {ref}")
     if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
