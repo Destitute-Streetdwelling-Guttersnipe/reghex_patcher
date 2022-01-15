@@ -60,9 +60,9 @@ class Position:
 
 def Ref2Address(base, byte_array, arch):
     if arch == ARM64: # PC relative instructions of arm64
+        (instr, instr2) = struct.unpack("<2L", byte_array) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
         if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, onlyOnce=True): # ADRP & ADD instructions
-            (instr, instr2) = struct.unpack("<2L", byte_array) # 2 unsigned long in little-endian
             immlo = (instr & 0x60000000) >> 29
             immhi = (instr & 0xffffe0) >> 3
             value64 = (immlo | immhi) << 12 # PAGE_SIZE = 0x1000 = 4096
@@ -71,10 +71,10 @@ def Ref2Address(base, byte_array, arch):
             page_address = base >> 12 << 12 # clear 12 LSB
             return page_address + extend_sign(value64, 33) + imm12
         elif FindRegHex(r"[94 97 14 17]$", byte_array, onlyOnce=True): # BL / B instruction
-            address = struct.unpack("<L", byte_array[4:])[0] << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
+            address = instr2 << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
             return base + extend_sign(address, 27)
         elif FindRegHex(r"[10]$", byte_array, onlyOnce=True): # ADR instruction
-            address = struct.unpack("<L", byte_array[4:])[0] >> 3 & ((1 << 21) - 1) # discard 8 MSB, discard 3 LSB
+            address = instr2 >> 3 & ((1 << 21) - 1) # discard 8 MSB, discard 3 LSB
             return base + extend_sign(address, 20)
     elif arch == AMD64: # RVA & VA instructions of x64
         address = struct.unpack("<l", byte_array[4:])[0] # address size is 4 bytes
