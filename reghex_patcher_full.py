@@ -36,8 +36,8 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
                     print(f"[+] Patch at {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                     if p.file_o: patched[p.file_o : p.file_o + len(patch)] = patch
             elif p0.address != None and 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))):
-                o = LastFunction(file.data[0 : p0.offset], file.arch)
-                print(f"[-] Found {['..', 'fn'][o != last_o]} {Position(file, offset=(last_o := o)).info} <- {p_info} {ref}")
+                fn = Position(file, offset=LastFunction(file.data[0 : p0.offset], file.arch)) # find function containing this match
+                print(f"[-] Found {['..', 'fn'][last_o != (last_o := fn.offset)]} {fn.info} <- {p_info} {ref}") # show 'fn' when a new function is found
     if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
