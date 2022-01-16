@@ -1,4 +1,4 @@
-credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for signatures and patching logic)"
+credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Credits to leogx9r & rainbowpigeon for patching logic)"
 import re, sys, struct, io
 import patches as Fixes
 
@@ -95,9 +95,8 @@ def FindFixes(file):
 def PatchByteArray(data):
     (magic, num_archs) = struct.unpack(">2L", data[:4*2])
     if magic == 0xCAFEBABE: # MacOS universal binary
-        for i in range(num_archs):
-            header_offset = 4*2 + 4*5*i # header_size = 4*5
-            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset : header_offset + 4*5])
+        for header_o in range(4*2, 4*2 + num_archs * (header_s := 4*5), header_s):
+            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
             PatchDetectedFile(data, FileInfo(data[offset : offset + size], offset))
     else:
@@ -122,14 +121,13 @@ def FileInfo(data = b'', base_offset = 0):
         sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
     else:
         exit("[!] Can not detect file type")
-    FileInfo.address2offset = sorted([(addr, offset, size) for addr, offset, size in sections if addr and offset], reverse=True) # sort by address
-    FileInfo.offset2address = sorted([(offset, addr, size) for addr, offset, size in FileInfo.address2offset], reverse=True) # sort by offset
+    FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o], reverse=True) # sort by address
+    FileInfo.offset2address = sorted([(o, addr, size) for addr, o, size in sections if addr and o], reverse=True) # sort by offset
     FileInfo.data, FileInfo.base_offset = data, base_offset
     return FileInfo
 
 def ConvertBetweenAddressAndOffset(sections, position):
-    for start, converted_start, size in sections:
-        if start <= position < start + size: return position - start + converted_start
-    return None
+    p = [position - start + other_start for start, other_start, size in sections if start <= position < start + size]
+    return p[0] if len(p) else None
 
 if __name__ == "__main__": main()
