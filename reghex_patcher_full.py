@@ -9,17 +9,15 @@ def main():
     PatchFile(input_file, output_file)
 
 def PatchFile(input_file, output_file):
-    with open(input_file, 'rb') as file: data = bytearray(file.read())
-    SplitFatBinary(data)
-    with open(output_file, "wb") as file: file.write(data)
-    print(f"[+] Patched file saved to {output_file}")
+    with open(input_file, 'rb') as file: PatchByteArray(data := bytearray(file.read()))
+    with open(output_file, "wb") as file: file.write(data) and print(f"[+] Saved to {output_file}")
 
 def FindRegHex(reghex, data, onlyOnce = False):
     regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), 'utf-8') # escape hex bytes
     it = re.finditer(regex.replace(b' ', b''), data, re.DOTALL) # remove all spaces
     return next(it, None) if onlyOnce else it
 
-def Patch(patched, file):
+def PatchDetectedFile(patched, file):
     for fix in FindFixes(file): PatchFix(fix, patched, file)
 
 def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs is not reset to default value in next calls
@@ -94,19 +92,19 @@ def FindFixes(file):
         if set(tags) == detected: return [fix for fix in fixes if not fix.arch or fix.arch == file.arch] # filter out different arch
     exit("[!] Can not find fixes for target file")
 
-def SplitFatBinary(data):
+def PatchByteArray(data):
     (magic, num_archs) = struct.unpack(">2L", data[:4*2])
     if magic == 0xCAFEBABE: # MacOS universal binary
         for i in range(num_archs):
-            # with open(f"macho_executable{i}", "wb") as file: file.write(data)
             header_offset = 4*2 + 4*5*i # header_size = 4*5
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_offset : header_offset + 4*5])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
-            Patch(data, FileInfo(data[offset : offset + size], offset))
+            PatchDetectedFile(data, FileInfo(data[offset : offset + size], offset))
     else:
-        Patch(data, FileInfo(data[:]))
+        PatchDetectedFile(data, FileInfo(data[:]))
 
 def FileInfo(data = b'', base_offset = 0):
+    # with open(f"detected_file_{base_offset:x}", "wb") as f: f.write(data)
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)
