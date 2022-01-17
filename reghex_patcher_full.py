@@ -24,7 +24,8 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
-            if p0.address != None and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)):
+            if p0.address == None: continue
+            if fix.look_behind or (i > 0 and len(match.group(i)) == 4):
                 p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-4 : p0.offset+4], file.arch))
             p_info = f"{p0.info} -> {p.info if p.address != p0.address else ' ' * len(p0.info)}"
             if not fix.look_behind:
@@ -33,7 +34,7 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
                 if p.file_o and (patch := bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch)): # use the whole fix.patch if it's not a list
                     print(f"[+] Patch at {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                     patched[p.file_o : p.file_o + len(patch)] = patch
-            elif p0.address != None and 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))):
+            elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))):
                 fn = Position(file, offset=LastFunction(file.data[0 : p0.offset], file.arch)) # find function containing this match
                 print(f"[-] Found {['..', 'fn'][last_o != (last_o := fn.offset)]} {fn.info} <- {p_info} {ref}") # show 'fn' when a new function is found
     if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
@@ -55,7 +56,7 @@ class Position:
     def __init__(self, file, address = None, offset = None):
         self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
-        self.file_o = self.offset + file.base_offset if self.offset != None and self.offset >= 0 else None
+        self.file_o = self.offset + file.base_offset if self.offset != None else None
         self.info = f"a:0x{self.address or 0:06x} " + (f"o:0x{self.file_o:06x}" if self.file_o else ' ' * 10)
 
 def Ref2Address(base, byte_array, arch):
