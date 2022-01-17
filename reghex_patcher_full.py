@@ -49,7 +49,7 @@ def LastFunction(data, arch, function_epilogue = r"(C3|EB .|E9 .{4})(90|CC|0F 0B
               + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
     }[arch] # die on unknown arch
     for group, start in [(m.group(), m.start()) for m in FindRegHex(function_prologue, data)][::-1]: # start with the last match
-        if len(group) > 2 or FindRegHex(function_epilogue, data[start-10 : start], onlyOnce=True): return start  # NOTE: skip too short match to exclude false positive
+        if len(group) > 3 or FindRegHex(function_epilogue, data[start-10 : start], onlyOnce=True): return start  # NOTE: check too short match to exclude false positive
 
 class Position:
     def __init__(self, file, address = None, offset = None):
