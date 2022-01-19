@@ -26,7 +26,7 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
             if p0.address == None: continue
             if fix.look_behind or (i > 0 and len(match.group(i)) == 4):
-                p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-4 : p0.offset+4], file.arch))
+                p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-8 : p0.offset+4], file.arch))
             p_info = f"{p0.info} -> {p.info if p.address != p0.address else ' ' * len(p0.info)}"
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
@@ -61,7 +61,7 @@ class Position:
 
 def Ref2Address(base, byte_array, arch):
     if arch == ARM64: # PC relative instructions of arm64
-        (instr, instr2) = struct.unpack("<2L", byte_array) # 2 unsigned long in little-endian
+        (instr, instr2) = struct.unpack("<2L", byte_array[-8:]) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
         if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, onlyOnce=True): # ADRP & ADD instructions
             value64 = ((instr & 0x60000000) >> 29 | (instr & 0xffffe0) >> 3) << 12 # PAGE_SIZE = 0x1000 = 4096
@@ -76,10 +76,10 @@ def Ref2Address(base, byte_array, arch):
             address = instr2 >> 3 & ((1 << 21) - 1) # discard 8 MSB, discard 3 LSB
             return base + extend_sign(address, 20)
     elif arch == AMD64: # RVA & VA instructions of x64
-        address = struct.unpack("<l", byte_array[4:])[0] # address size is 4 bytes
-        if FindRegHex(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:4], onlyOnce=True):
+        (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
+        if FindRegHex(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4], onlyOnce=True):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C5-C7 FC-FF] | 8D 8C 24)$", byte_array[:4], onlyOnce=True):
+        if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C5-C7 FC-FF] | 8D 8C 24 | 48 C7 05 .{4})$", byte_array[:-4], onlyOnce=True):
             return address # VA reference
     return base
 
