@@ -20,7 +20,7 @@ def FindRegHex(reghex, data, onlyOnce = False):
 def PatchDetectedFile(patched, file):
     for fix in FindFixes(file): PatchFix(fix, patched, file)
 
-def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs is not reset to default value in next calls
+def PatchFix(fix, patched, file, match = None, fn_o = None, refs = {}): # refs is not reset to default value in next calls
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
@@ -36,7 +36,7 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
                     patched[p.file_o : p.file_o + len(patch)] = patch
             elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))):
                 fn = Position(file, offset=LastFunction(file.data[0 : p0.offset], file.arch)) # find function containing this match
-                print(f"[-] Found {['..', 'fn'][last_o != (last_o := fn.offset)]} {fn.info} <- {p_info} {ref}") # show 'fn' when a new function is found
+                print(f"[-] Found fn {['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)]} <- {p_info} {ref}") # show 'fn' when a new function is found
     if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
