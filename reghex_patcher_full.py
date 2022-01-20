@@ -43,13 +43,15 @@ AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
 
 def LastFunction(data, arch):
-    function_prologue = {
+    function_reghex = {
         AMD64:  r"(?:(?:C3|EB .|[E8 E9] .{4})(?:90|CC|0F 0B)* | 00{8})" ## (ret | jmp ? | call ?) (nop | int3 | ud2)
               + r"( (48 89 54 24 .)? ( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 | 48 [81 83] EC )+ )", ## mov qword[rsp+?], rdx; (push r? | mov rbp, rsp | sub rsp, ?)
         ARM64:  r"((. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
               + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+)", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
     }[arch] # die on unknown arch
-    return [*FindRegHex(function_prologue, data)][-1].start(1) # start with the last match
+    if not (m1 := FindRegHex(f".+ {function_reghex}", data, onlyOnce=True)): return -1 # only last function is matched, because .+ is greedy
+    m2 = FindRegHex(function_reghex, data[m1.start() - 4 : ], onlyOnce=True) # go back 4 bytes and search again, because E8 or E9 may appear inside dword in [E8 E9] .{4}
+    return m1.start() - 4 + m2.start(1) # function prologue is in group 1
 
 class Position:
     def __init__(self, file, address = None, offset = None):
