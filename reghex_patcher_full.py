@@ -27,7 +27,7 @@ def PatchFix(fix, patched, file, match = None, last_o = None, refs = {}): # refs
             if p0.address == None: continue
             if fix.look_behind or (i > 0 and len(match.group(i)) == 4):
                 p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-8 : p0.offset+4], file.arch))
-            p_info = f"{p0.info} -> {p.info if p.address != p0.address else ' ' * len(p0.info)}"
+            p_info = f"{p0.info} -> {(p.info if p.address != p0.address else '').ljust(len(p0.info))}"
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
@@ -58,7 +58,7 @@ class Position:
         self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
         self.file_o = self.offset + file.base_offset if self.offset != None else None
-        self.info = f"a:0x{self.address or 0:06x} " + (f"o:0x{self.file_o:06x}" if self.file_o else ' ' * 10)
+        self.info = f"a:0x{self.address or 0:04x} " + (f"o:0x{self.file_o:06x}" if self.file_o else ' ' * 10)
 
 def Ref2Address(base, byte_array, arch):
     if arch == ARM64: # PC relative instructions of arm64
