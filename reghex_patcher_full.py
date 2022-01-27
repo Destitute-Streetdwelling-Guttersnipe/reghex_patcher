@@ -80,7 +80,7 @@ def Ref2Address(base, byte_array, arch):
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
         if FindRegHex(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4], onlyOnce=True):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C5-C7 FC-FF] | 8D 8C 24 | 48 C7 05 .{4})$", byte_array[:-4], onlyOnce=True):
+        if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8 F9 FC-FF] | 8D 8C 24 | 48 C7 05 .{4} | 3D)$", byte_array[:-4], onlyOnce=True):
             return address # VA reference
     return base
 
