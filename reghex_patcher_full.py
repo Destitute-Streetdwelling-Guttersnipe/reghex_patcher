@@ -18,25 +18,26 @@ def FindRegHex(reghex, data, onlyOnce = False):
     return next(it, None) if onlyOnce else it
 
 def PatchDetectedFile(patched, file):
-    for fix in FindFixes(file): PatchFix(fix, patched, file)
+    refs = {} # reset refs for each file
+    for fix in FindFixes(file): PatchFix(fix, patched, file, refs)
 
-def PatchFix(fix, patched, file, match = None, fn_o = None, refs = {}): # refs is not reset to default value in next calls
+def PatchFix(fix, patched, file, refs, match = None, fn_o = None):
     for match in FindRegHex(fix.reghex, file.data):
-        for i in range(1, match.lastindex + 1) if match.lastindex else range(1):
+        for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
-            if p0.address == None: continue
-            if fix.look_behind or (i > 0 and len(match.group(i)) == 4):
+            if p0.address == None: continue # skip if p0 is not in a section
+            if fix.look_behind or (i > 0 and len(match.group(i)) == 4): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-8 : p0.offset+4], file.arch))
-            p_info = f"{p0.info} -> {(p.info if p.address != p0.address else '').ljust(len(p0.info))}"
+            p_info = f"{p0.info} -> {(p.info if p.address != p0.address else '').ljust(len(p0.info))}" # keep length unchanged for output alignment
             if not fix.look_behind:
-                refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i])
-                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # p0.address can be equal to p.address when ref not exist
+                refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
+                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
                 if p.file_o and (patch := bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch)): # use the whole fix.patch if it's not a list
                     print(f"[+] Patch at {p_info} {refs[p0.address]} = {patch.hex(' ')}")
                     patched[p.file_o : p.file_o + len(patch)] = patch
-            elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))):
+            elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))): # look behind if p0 or p is in refs
                 fn = Position(file, offset=LastFunction(file.data[0 : p0.offset], file.arch)) # find function containing this match
-                print(f"[-] Found fn {['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)]} <- {p_info} {ref}") # show 'fn' when a new function is found
+                print(f"[-] Found fn {['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)]} <- {p_info} {ref}") # show fn.info when a new function is found
     if fix.patch and not match: print(f"[!] Can not find pattern: {fix.name} {fix.reghex}")
 
 AMD64 = 'amd64' # arch x86-64
