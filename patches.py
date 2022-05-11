@@ -56,6 +56,12 @@ st_delay_fixes = [ # extend the delay period
 ]
 sm_delay_fixes = [ # extend the delay period
 ]
+st_sm_remote_check_fixes = [ # data section fixes can be applied on all platforms
+]
+st_license_check_fixes = [ # data section fixes can be applied on all platforms
+]
+sm_license_check_fixes = [ # data section fixes can be applied on all platforms
+]
 tagged_fixes = [
     ([b"x64", "SublimeText" ,            b"windows"], string_detections + st_wind_fixes         + ref_detections ),
     ([b"x64", "SublimeText" ,            b"osx"    ], string_detections + st_macos_fixes        + ref_detections),
@@ -69,6 +75,8 @@ tagged_fixes = [
     # ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),
     ([        "SublimeText" ,                      ], string_detections + ref_detections),
     ([        "SublimeMerge",                      ], string_detections + ref_detections),
+    # ([        "SublimeText" ,                      ], st_sm_remote_check_fixes + st_license_check_fixes),
+    # ([        "SublimeMerge",                      ], st_sm_remote_check_fixes + sm_license_check_fixes),
 ]
 detections = [
     Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
