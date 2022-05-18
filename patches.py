@@ -14,6 +14,10 @@ ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
 ret119 = "48 C7 C0 19 01 00 00 C3" # mov rax, 0x119; ret
 ret0_rcx = "48 31 C0  48 8B 11  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx, qword ptr [rcx]; cmp byte ptr [rdx], 0x2d; setne al; ret
 ret0_rdi = "48 31 C0  48 8B 17  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx, qword ptr [rdi]; cmp byte ptr [rax], 0x2d; setne al; ret
+# comparison of detection methods:
+# - detection of instructions in code section is the least stable among versions, platforms (arm64, amd64) and OS (Windows, Linux, macOS)
+# - detection of constants in code section is more stable among versions and OS, but different among platforms (arm64, amd64)
+# - detection of constants in data section is the most stable among versions, and more similar among platforms and OS, but difficult to create an effective patch 
 # before making a regex search with fix.reghex, hex digits pairs are converted to hex-escape format and all spaces are removed
 # fix.name is splitted to set label for offsets of matching groups (from fix.reghex)
 # fix.ref is unused, any matching groups that has 4 bytes will be check if it's a reference to a string/function
