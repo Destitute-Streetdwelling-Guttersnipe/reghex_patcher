@@ -18,11 +18,12 @@ ret0_rdi = "48 31 C0  48 8B 17  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx,
 # - detection of instructions in code section is the least stable among versions, platforms (arm64, amd64) and OS (Windows, Linux, macOS)
 # - detection of constants in code section is more stable among versions and OS, but different among platforms (arm64, amd64)
 # - detection of constants in data section is the most stable among versions, and more similar among platforms and OS, but difficult to create an effective patch 
-# before making a regex search with fix.reghex, hex digits pairs are converted to hex-escape format and all spaces are removed
-# fix.name is splitted to set label for offsets of matching groups (from fix.reghex)
-# fix.ref is unused, any matching groups that has 4 bytes will be check if it's a reference to a string/function
-# fix.patch can be a string or a list of strings to patch each matching group
-# fix.look_behind is used to find the function that contains the matching groups
+# Notes on tuple Fix:
+# - before making a regex search with fix.reghex, hex digits pairs are converted to hex-escape format and all spaces are removed
+# - fix.name is splitted to set label for offsets of matching groups (from fix.reghex)
+# - fix.ref is unused, any matching groups that has 4 bytes will be check if it's a reference to a string/function
+# - fix.patch can be a string or a list of strings to patch each matching group
+# - fix.look_behind is used to find the function that contains the matching groups
 Fix = collections.namedtuple('Fix', 'name reghex patch ref arch look_behind', defaults=('', '', '', False, '', None)) # reghex is regex with hex bytes
 st_wind_fixes = [
 ]
@@ -101,14 +102,8 @@ detections = [
 
 # /src/sublime_text/release_notes/
 # /src/sublime_merge/release_notes/
-# Thanks for trying out Sublime Text.
-# Thanks for trying out Sublime Merge.
-# Thank you for purchasing Sublime Text!
-# Thanks for purchasing, enjoy Sublime Merge!
 # This will revert Sublime Text to an unregistered state
 # This will revert Sublime Merge to an unregistered state
-# That appears to be a Sublime Merge license key, instead of a Sublime Text key
-# That appears to be a Sublime Text license key, instead of a Sublime Merge key
 # Sublime Text build %s
 # Sublime Merge build %s
 # Sublime Text Build %s
