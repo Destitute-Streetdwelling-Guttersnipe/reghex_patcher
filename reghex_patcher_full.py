@@ -63,9 +63,10 @@ class Position:
 
 def Ref2Address(base, byte_array, arch):
     if arch == ARM64: # PC relative instructions of arm64
-        (instr, instr2) = struct.unpack("<2L", byte_array[-8:]) # 2 unsigned long in little-endian
+        (instr3, instr, instr2) = struct.unpack("<3L", byte_array[-4*3:]) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
-        if FindRegHex(r"[90 B0 D0 F0] .{3} 91$", byte_array, onlyOnce=True): # ADRP & ADD instructions
+        if (m := FindRegHex(r"[90 B0 D0 F0] (.{3} [^91])? .{3} 91$", byte_array, onlyOnce=True)): # ADRP & ADD instructions
+            if m.group(1): instr = instr3
             value64 = ((instr & 0x60000000) >> 29 | (instr & 0xffffe0) >> 3) << 12 # PAGE_SIZE = 0x1000 = 4096
             imm12 = (instr2 & 0x3ffc00) >> 10
             if instr2 & 0xc00000: imm12 <<= 12

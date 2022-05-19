@@ -33,6 +33,8 @@ st_macos_fixes = [
 ]
 st_macos_fixes_arm64 = [
 ]
+st_linux_fixes_arm64 = [
+]
 sm_wind_fixes = [
 ]
 sm_linux_fixes = [
@@ -54,7 +56,7 @@ ref_detections = [
                           + r"(?<= . . [E8 E9] | (?:[48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] ) .", ## call ?; jmp ?; lea r?, [rip + ?]; movups xmm0, xmmword ptr [rip + ?]
         arch="amd64", look_behind=True),
     # detection for number, string and function inside ARM64 instructions
-    Fix(name="arm64", reghex=r". (?=. . [10 94 97 14 17]) | (?<=[90 B0 D0 F0])  . (?=. . 91)", ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
+    Fix(name="arm64", reghex=r". (?=. . [10 94 97 14 17]) | (?<=.{4} [90 B0 D0 F0] | [90 B0 D0 F0] .{3} [^91])  . (?=. . 91)", ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
         arch="arm64", look_behind=True),
 ]
 st_delay_fixes = [ # extend the delay period
@@ -71,6 +73,7 @@ tagged_fixes = [
     ([b"x64", "SublimeText" ,            b"windows"], string_detections + st_wind_fixes         + ref_detections ),
     ([b"x64", "SublimeText" ,            b"osx"    ], string_detections + st_macos_fixes        + ref_detections),
     ([        "SublimeText" ,  b"arm64", b"osx"    ], string_detections + st_macos_fixes_arm64  + ref_detections),
+    ([        "SublimeText" ,  b"arm64", b"linux"  ], string_detections + st_linux_fixes_arm64  + ref_detections),
     ([b"x64", "SublimeText" ,            b"linux"  ], string_detections + st_linux_fixes        + ref_detections),
     ([b"x64", "SublimeMerge",            b"windows"], string_detections + sm_wind_fixes         + ref_detections ),
     ([b"x64", "SublimeMerge" ,           b"osx"    ], string_detections + sm_macos_fixes        + ref_detections),
