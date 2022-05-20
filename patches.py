@@ -56,7 +56,8 @@ ref_detections = [
                           + r"(?<= . . [E8 E9] | (?:[48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] ) .", ## call ?; jmp ?; lea r?, [rip + ?]; movups xmm0, xmmword ptr [rip + ?]
         arch="amd64", look_behind=True),
     # detection for number, string and function inside ARM64 instructions
-    Fix(name="arm64", reghex=r". (?=. . [10 94 97 14 17]) | (?<=.{4} [90 B0 D0 F0] | [90 B0 D0 F0] .{3} [^91])  . (?=. . 91)", ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
+    Fix(name="arm64", reghex=r". (?=. . [10 94 97 14 17]) | (?<=.{4} [90 B0 D0 F0] | [90 B0 D0 F0] .{3} [^91])  . (?=. . 91)" ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
+                          + r"| . (?=. [80-9F] 52) | (?<=.{4} [80-9F] 52 | [80-9F] 52 .{3} [^72])  . (?=. [A0-BF] 72)",
         arch="arm64", look_behind=True),
 ]
 st_delay_fixes = [ # extend the delay period
