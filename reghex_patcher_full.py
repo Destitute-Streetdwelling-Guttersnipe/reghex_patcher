@@ -71,7 +71,7 @@ def Ref2Address(base, byte_array, arch):
             imm12 = (instr2 & 0x3ffc00) >> 10
             if instr2 & 0xc00000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
-            return page_address + extend_sign(value64, 33) + imm12
+            return page_address + extend_sign(value64, 32) + imm12
         elif FindRegHex(r"[94 97 14 17]$", byte_array, onlyOnce=True): # BL / B instruction
             address = instr2 << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
             return base + extend_sign(address, 27)
