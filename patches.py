@@ -43,6 +43,8 @@ sm_macos_fixes = [
 ]
 sm_macos_fixes_arm64 = [
 ]
+sm_linux_fixes_arm64 = [
+]
 st_blacklist_fixes = [
 ]
 string_detections = [ # detect string in data & code sections
@@ -79,6 +81,7 @@ tagged_fixes = [
     ([b"x64", "SublimeMerge",            b"windows"], string_detections + sm_wind_fixes         + ref_detections ),
     ([b"x64", "SublimeMerge" ,           b"osx"    ], string_detections + sm_macos_fixes        + ref_detections),
     ([        "SublimeMerge" , b"arm64", b"osx"    ], string_detections + sm_macos_fixes_arm64  + ref_detections),
+    ([        "SublimeMerge" , b"arm64", b"linux"  ], string_detections + sm_linux_fixes_arm64  + ref_detections),
     ([b"x64", "SublimeMerge",            b"linux"  ], string_detections + sm_linux_fixes        + ref_detections),
     # ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
     # ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),

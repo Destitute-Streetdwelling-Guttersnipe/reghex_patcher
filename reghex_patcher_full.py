@@ -62,7 +62,7 @@ class Position:
         self.info = f"a:0x{self.address or 0:04x} " + (f"o:0x{self.file_o:06x}" if self.file_o else ' ' * 10)
 
 def Ref2Address(base, byte_array, arch):
-    if arch == ARM64: # PC relative instructions of arm64
+    if arch == ARM64 and base % 4 == 0: # PC relative instructions of arm64
         (instr3, instr, instr2) = struct.unpack("<3L", byte_array[-4*3:]) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
         if (m := FindRegHex(r"[90 B0 D0 F0] (.{3} [^91])? .{3} 91$", byte_array, onlyOnce=True)): # ADRP & ADD instructions
