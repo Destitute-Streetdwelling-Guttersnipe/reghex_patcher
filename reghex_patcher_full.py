@@ -43,16 +43,15 @@ def PatchFix(fix, patched, file, refs, match = None, fn_o = None):
 AMD64 = 'amd64' # arch x86-64
 ARM64 = 'arm64' # arch AArch64
 
-def LastFunction(data, arch, epilogue = 1, prologue = 2):
+def LastFunction(data, arch, last = None):
     function_reghex = {
-        AMD64:  r"((?:C3|EB .|[E8 E9] .{4})(?:90|CC|0F 0B)* | 00{8})" ## (ret | jmp ? | call ?) (nop | int3 | ud2)
+        AMD64:  r"(?:(?:C3|EB .|[E8 E9] .{4})(?:90|CC|0F 0B)* | 00{8})" ## (ret | jmp ? | call ?) (nop | int3 | ud2)
               + r"( (48 89 54 24 .)? ( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 | 48 [81 83] EC )+ )", ## mov qword[rsp+?], rdx; (push r? | mov rbp, rsp | sub rsp, ?)
-        ARM64:  r"(.{4}) ((. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
-              + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . A9 | [E9 EB] . . 6D | FD . . 91 )+)", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
+        ARM64:  r"(?:(?:C0 03 5F D6 | .{3} [14 17 94 97]) (?:1F 20 03 D5)* | 00{8}) ((. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
+              + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . [A9 F9] | [E9 EB] . . 6D | FD . . 91 )+)", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
     }[arch] # die on unknown arch
-    if not (m1 := FindRegHex(f".+ {function_reghex}", data, onlyOnce=True)): return -1 # only last function is matched, because .+ is greedy
-    m2 = FindRegHex(function_reghex, data[m1.start(epilogue) - 4 : ], onlyOnce=True) # go back 4 bytes and search again, because E8 or E9 may appear inside dword in [E8 E9] .{4}
-    return m1.start(epilogue) - 4 + m2.start(prologue)
+    for m in FindRegHex(function_reghex, data): last = m
+    return last.start(1) if last else 0
 
 class Position:
     def __init__(self, file, address = None, offset = None):
