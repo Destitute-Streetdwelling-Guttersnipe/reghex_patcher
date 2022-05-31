@@ -54,7 +54,7 @@ def LastFunction(data, arch, last = None):
     return last.start(1) if last else 0
 
 class Position:
-    def __init__(self, file, address = None, offset = None):
+    def __init__(self, file, address = None, offset = None): # at least, address or offset must have value 
         self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
         self.file_o = self.offset + file.base_offset if self.offset != None else None
@@ -81,16 +81,17 @@ def Ref2Address(base, byte_array, arch):
         elif FindRegHex(r"[94 97 14 17]$", byte_array, onlyOnce=True): # BL / B instruction
             address = instr2 << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
             return base + extend_sign(address, 27)
-        elif FindRegHex(r"[10]$", byte_array, onlyOnce=True): # ADR instruction
-            address = instr2 >> 3 & ((1 << 21) - 1) # discard 8 MSB, discard 3 LSB
-            return base + extend_sign(address, 20)
+        elif FindRegHex(r"[10 30 50 70]$", byte_array, onlyOnce=True): # ADR instruction
+            immhi = instr2 >> 5 & ((1 << 19) - 1) # discard 8 MSB, discard 5 LSB
+            immlo = instr2 >> 29 & ((1 << 2) - 1) # discard 1 MSB, discard 29 LSB
+            return base + extend_sign(immhi << 2 + immlo, 20)
     elif arch == AMD64: # RVA & VA instructions of x64
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
         if FindRegHex(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4], onlyOnce=True):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8 F9 FC-FF] | 8D 8C 24 | 48 C7 05 .{4} | 3D)$", byte_array[:-4], onlyOnce=True):
+        if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 C7 06 | (48 C7 05|C7 85|C7 84 .) .{4} | 3D)$", byte_array[:-4], onlyOnce=True):
             return address # VA reference
-    return base
+    return base # return the input address if referenced address is not found
 
 def FindFixes(file):
     detected = set()

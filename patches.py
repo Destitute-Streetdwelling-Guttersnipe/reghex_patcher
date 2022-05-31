@@ -51,14 +51,14 @@ string_detections = [ # detect string in data & code sections
 ]
 ref_detections = [
     # detection for number, string and function inside AMD64 instructions
-    Fix(name="amd64", reghex=r"  (?<= C7 84 . .{4} | .{3} C7 44 . . | . C7 85 .{4} | 48 C7 05 .{4} ) . |" ## mov dword [r?+r?+?], ?; move [rip+?], ?
+    Fix(name="amd64", reghex=r"(?<= .{3} C7 44 . . | . C7 85 .{4} | (?:48 C7 05|C7 84 .) .{4} ) . |" ## mov dword [r?+r?+?], ?; move [rip+?], ?
                           + r"(?<= . . 8D [81 87] | . 41 8D 8F | 41 8D 8C 24 | . . 81 [FC FF] ) . |" ## lea eax, [rdi+?]; lea ecx, [r1?+?]; lea ecx, [r12+?]; cmp edi, ?; cmp r?d, ?;
-                          + r"(?<= . 41 BE | 41 81 C6 | . 81 [C1 C5 C7 F8 F9 FB FD FF] | 8D 9C 09 ) . |" ## mov e?, ?; mov r14d, ?; add r14d, ?; add e?, ?; cmp e?, ?; lea ebx, [rcx+rcx+?]
+                          + r"(?<= . 41 BE | 41 81 C6 | . 81 [C1 C5 C7 F8-FF] | 8D 9C 09 | 48 C7 06 ) . |" ## mov e?, ?; mov r14d, ?; add r14d, ?; add e?, ?; cmp e?, ?; lea ebx, [rcx+rcx+?]
                           + r"(?<=  8A [80-84 86-8C 8E-94 96-97] | . [B8-BB BD-BF 3D] ) . |" ## mov ?l, byte ptr [r? + ?]; mov e?, ?; mov r?, ?; cmp eax, ?
                           + r"(?<= . . [E8 E9] | (?:[48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] ) .", ## call ?; jmp ?; lea r?, [rip + ?]; movups xmm0, xmmword ptr [rip + ?]
         arch="amd64", look_behind=True),
     # detection for number, string and function inside ARM64 instructions
-    Fix(name="arm64", reghex=r". (?=. . [10 94 97 14 17]) | (?<=.{4} [90 B0 D0 F0] | [90 B0 D0 F0] .{3} [^91])  . (?=. . 91)" ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
+    Fix(name="arm64", reghex=r". (?=. . [10 30 50 70 94 97 14 17]) | (?<=.{4} [90 B0 D0 F0] | [90 B0 D0 F0] .{3} [^91])  . (?=. . 91)" ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
                           + r"| . (?=. [80-9F] 52) | (?<=.{4} [80-9F] 52 | [80-9F] 52 .{3} [^72])  . (?=. [A0-BF] 72)",
         arch="arm64", look_behind=True),
 ]
