@@ -1,11 +1,10 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leogx9r & rainbowpigeon for inspiration)"
-import re, sys, struct, io
-import patches as Fixes
+import re, sys, struct, io, patches as Fixes
 
 def main():
     print(f"[-] ---- {credits}")
     input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file [output_file]")
-    output_file = sys.argv[2] if len(sys.argv) > 2 else input_file
+    output_file = sys.argv[2] if len(sys.argv) > 2 else input_file # write to input_file if output_file is not specified
     PatchFile(input_file, output_file)
 
 def PatchFile(input_file, output_file):
@@ -19,9 +18,9 @@ def FindRegHex(reghex, data, onlyOnce = False):
 
 def PatchDetectedFile(patched, file):
     refs = {} # reset refs for each file
-    for fix in FindFixes(file): PatchFix(fix, patched, file, refs)
+    for fix in FindFixes(file): ApplyFix(fix, patched, file, refs)
 
-def PatchFix(fix, patched, file, refs, match = None, fn_o = None):
+def ApplyFix(fix, patched, file, refs, match = None, fn_o = None):
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
@@ -32,16 +31,17 @@ def PatchFix(fix, patched, file, refs, match = None, fn_o = None):
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
-                if p.file_o and (patch := bytes.fromhex(fix.patch[i-1] if isinstance(fix.patch, list) else fix.patch)): # use the whole fix.patch if it's not a list
-                    print(f"[+] Patch at {p_info} {refs[p0.address]} = {patch.hex(' ')}")
-                    patched[p.file_o : p.file_o + len(patch)] = patch
+                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, refs[p0.address])
             elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))): # look behind if p0 or p is in refs
                 fn = Position(file, offset=LastFunction(file.data[0 : p0.offset], file.arch)) # find function containing this match
                 print(f"[-] Found fn {['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)]} <- {p_info} {ref}") # show fn.info when a new function is found
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
-AMD64 = 'amd64' # arch x86-64
-ARM64 = 'arm64' # arch AArch64
+def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
+    if (b := bytes.fromhex(patch[i-1] if isinstance(patch, list) else patch)): print(f"[+] Patch at {p_info} {ref} = {b.hex(' ')}") # use the whole fix.patch if it's not a list
+    patched[file_o : file_o + len(b)] = b
+
+AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
 
 def LastFunction(data, arch, last = None):
     function_reghex = {
@@ -87,8 +87,7 @@ def Ref2Address(base, byte_array, arch):
             return base + extend_sign(immhi << 2 + immlo, 20)
     elif arch == AMD64: # RVA & VA instructions of x64
         if FindRegHex(r"(66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4], onlyOnce=True):
-            (value32,) = struct.unpack("<h", byte_array[-4:-2]) # 2-byte constant
-            return value32
+            return struct.unpack("<h", byte_array[-4:-2])[0] # 2-byte integer
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
         if FindRegHex(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4], onlyOnce=True):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
@@ -113,8 +112,7 @@ def PatchByteArray(data):
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
             PatchDetectedFile(data, FileInfo(data[offset : offset + size], offset))
-    else:
-        PatchDetectedFile(data, FileInfo(data[:]))
+    else: PatchDetectedFile(data, FileInfo(data[:]))
 
 def FileInfo(data = b'', base_offset = 0):
     # with open(f"detected_file_{base_offset:x}", "wb") as f: f.write(data)
@@ -133,15 +131,14 @@ def FileInfo(data = b'', base_offset = 0):
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
         FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64 }[macho.get_header().cputype] # die on unknown arch
         sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
-    else:
-        exit("[!] Cannot detect file type")
+    else: exit("[!] Cannot detect file type")
     FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o], reverse=True) # sort by address
     FileInfo.offset2address = sorted([(o, addr, size) for addr, o, size in sections if addr and o], reverse=True) # sort by offset
     FileInfo.data, FileInfo.base_offset = data, base_offset
     return FileInfo
 
 def ConvertBetweenAddressAndOffset(sections, position):
-    p = [position - start + other_start for start, other_start, size in sections if start <= position < start + size]
-    return p[0] if len(p) else None
+    for start, other_start, size in sections:
+        if start <= position < start + size: return position - start + other_start
 
 if __name__ == "__main__": main()
