@@ -27,14 +27,14 @@ def ApplyFix(fix, patched, file, refs, match = None, fn_o = None):
             if p0.address == None: continue # skip if p0 is not in a section
             if fix.look_behind or (i > 0 and len(match.group(i)) == 4): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-8 : p0.offset+4], file.arch))
-            p_info = f"{p0.info} -> {(p.info if p.address != p0.address else '').ljust(len(p0.info))}" # keep length unchanged for output alignment
+            p_info = p0.info + " -> " + (p.info if p.address != p0.address else '').ljust(len(p0.info)) # keep length unchanged for output alignment
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
                 if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, refs[p0.address])
             elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))): # look behind if p0 or p is in refs
                 fn = Position(file, offset=LastFunction(file.data[0 : p0.offset], file.arch)) # find function containing this match
-                print(f"[-] Found fn {['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)]} <- {p_info} {ref}") # show fn.info when a new function is found
+                print("[-] Found fn " + ['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)] + f" <- {p_info} {ref}") # show fn.info when a new function is found
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
 def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
@@ -110,12 +110,12 @@ def PatchByteArray(data):
     if magic == 0xCAFEBABE: # MacOS universal binary
         for header_o in range(4*2, 4*2 + num_archs * (header_s := 4*5), header_s):
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
-            print(f"\n[+] ---- at 0x{offset:x}: Executable for CPU 0x{cpu_type:x} 0x{cpu_subtype:x}")
+            print(f"\n[+] ---- at 0x{offset:x}: Executable for " + (arch := { 0x1000007: AMD64, 0x100000c: ARM64 }[cpu_type])) # die on unknown arch
+            with open(sys.argv[1] + "_" + arch, "wb") as f: f.write(data[offset : offset + size]) # store detected file
             PatchDetectedFile(data, FileInfo(data[offset : offset + size], offset))
     else: PatchDetectedFile(data, FileInfo(data[:]))
 
 def FileInfo(data = b'', base_offset = 0):
-    # with open(f"detected_file_{base_offset:x}", "wb") as f: f.write(data)
     if re.search(b"^MZ", data):
         import pefile
         pe = pefile.PE(data=data, fast_load=True)

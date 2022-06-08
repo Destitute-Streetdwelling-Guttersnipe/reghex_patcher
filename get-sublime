@@ -15,10 +15,15 @@ case $2 in
         package=sublime-$1-$3-1-x86_64.pkg.tar.xz
         file=opt/sublime_$1/sublime_$1
         ;;
+    linux-arm64)
+        package=sublime-$1-$3-1-aarch64.pkg.tar.xz
+        file=opt/sublime_$1/sublime_$1
+        ;;
     *    ) echo unknown platform: $2; exit 2 ;;
 esac
 if [[ ! -f $package ]]; then
     wget https://download.sublimetext.com/$package
+	# direct link from https://www.sublimetext.com/download_thanks and https://www.sublimemerge.com/download_thanks
 fi
 case $package in
     *.zip) unzip $package "$file" ;;
