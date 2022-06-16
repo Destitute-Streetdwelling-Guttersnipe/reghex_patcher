@@ -1,10 +1,10 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leogx9r & rainbowpigeon for inspiration)"
-import re, sys, struct, io, patches as Fixes
+import re, sys, struct, os, io, patches as Fixes
 
 def main():
     print(f"[-] ---- {credits}")
     input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file [output_file]")
-    output_file = sys.argv[2] if len(sys.argv) > 2 else input_file # write to input_file if output_file is not specified
+    output_file = sys.argv[2] if len(sys.argv) > 2 else os.devnull # discard patched data if output_file is omitted
     PatchFile(input_file, output_file)
 
 def PatchFile(input_file, output_file):
