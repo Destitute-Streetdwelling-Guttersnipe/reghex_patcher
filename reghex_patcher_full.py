@@ -27,11 +27,11 @@ def ApplyFix(fix, patched, file, refs, match = None, fn_o = None):
             if p0.address == None: continue # skip if p0 is not in a section
             if fix.look_behind or (i > 0 and len(match.group(i)) == 4): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-8 : p0.offset+4], file.arch))
-            p_info = p0.info + " -> " + (p.info if p.address != None else '').ljust(len(p0.info)) # keep length unchanged for output alignment
+            p_info = p0.info + " -> " + (p.info if p.address != p0.address else '').ljust(len(p0.info)) # keep length unchanged for output alignment
             if not fix.look_behind:
                 refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
-                if p.address != None and not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
-                if fix.patch: PatchAtOffset(p.file_o or p0.file_o, patched, fix.patch, i, p_info, refs[p0.address])
+                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
+                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, refs[p0.address])
             elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))): # look behind if p0 or p is in refs
                 fn = Position(file, offset=LastFunction(file.data[0 : p0.offset], file.arch)) # find function containing this match
                 print("[-] Found fn " + ['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)] + f" <- {p_info} {ref}") # show fn.info when a new function is found
@@ -93,7 +93,7 @@ def Ref2Address(base, byte_array, arch):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
         if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 C7 06 | (48 C7 05|C7 85|C7 84 .) .{4} | C7 44 . . | 3D)$", byte_array[:-4], onlyOnce=True):
             return address # VA reference
-    return None
+    return base # return the input address if referenced address is not found
 
 def FindFixes(file):
     detected = set()
