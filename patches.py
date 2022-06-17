@@ -45,6 +45,10 @@ sm_macos_fixes_arm64 = [
 ]
 sm_linux_fixes_arm64 = [
 ]
+st_fixes = [
+]
+sm_fixes = [
+]
 st_blacklist_fixes = [
 ]
 string_detections = [ # detect string in data & code sections
@@ -73,16 +77,16 @@ st_license_check_fixes = [ # data section fixes can be applied on all platforms
 sm_license_check_fixes = [ # data section fixes can be applied on all platforms
 ]
 tagged_fixes = [
-    ([b"x64", "SublimeText" ,            b"windows"], string_detections + st_wind_fixes         + ref_detections ),
-    ([b"x64", "SublimeText" ,            b"osx"    ], string_detections + st_macos_fixes        + ref_detections),
-    ([        "SublimeText" ,  b"arm64", b"osx"    ], string_detections + st_macos_fixes_arm64  + ref_detections),
-    ([        "SublimeText" ,  b"arm64", b"linux"  ], string_detections + st_linux_fixes_arm64  + ref_detections),
-    ([b"x64", "SublimeText" ,            b"linux"  ], string_detections + st_linux_fixes        + ref_detections),
-    ([b"x64", "SublimeMerge",            b"windows"], string_detections + sm_wind_fixes         + ref_detections ),
-    ([b"x64", "SublimeMerge" ,           b"osx"    ], string_detections + sm_macos_fixes        + ref_detections),
-    ([        "SublimeMerge" , b"arm64", b"osx"    ], string_detections + sm_macos_fixes_arm64  + ref_detections),
-    ([        "SublimeMerge" , b"arm64", b"linux"  ], string_detections + sm_linux_fixes_arm64  + ref_detections),
-    ([b"x64", "SublimeMerge",            b"linux"  ], string_detections + sm_linux_fixes        + ref_detections),
+    ([b"x64", "SublimeText" ,            b"windows"], string_detections + st_fixes + st_wind_fixes         + ref_detections),
+    ([b"x64", "SublimeText" ,            b"osx"    ], string_detections + st_fixes + st_macos_fixes        + ref_detections),
+    ([        "SublimeText" ,  b"arm64", b"osx"    ], string_detections + st_fixes + st_macos_fixes_arm64  + ref_detections),
+    ([        "SublimeText" ,  b"arm64", b"linux"  ], string_detections + st_fixes + st_linux_fixes_arm64  + ref_detections),
+    ([b"x64", "SublimeText" ,            b"linux"  ], string_detections + st_fixes + st_linux_fixes        + ref_detections),
+    ([b"x64", "SublimeMerge",            b"windows"], string_detections + sm_fixes + sm_wind_fixes         + ref_detections),
+    ([b"x64", "SublimeMerge" ,           b"osx"    ], string_detections + sm_fixes + sm_macos_fixes        + ref_detections),
+    ([        "SublimeMerge" , b"arm64", b"osx"    ], string_detections + sm_fixes + sm_macos_fixes_arm64  + ref_detections),
+    ([        "SublimeMerge" , b"arm64", b"linux"  ], string_detections + sm_fixes + sm_linux_fixes_arm64  + ref_detections),
+    ([b"x64", "SublimeMerge",            b"linux"  ], string_detections + sm_fixes + sm_linux_fixes        + ref_detections),
     # ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
     # ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),
     ([        "SublimeText" ,                      ], string_detections + ref_detections),
