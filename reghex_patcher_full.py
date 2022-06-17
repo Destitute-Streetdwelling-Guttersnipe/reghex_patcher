@@ -71,6 +71,8 @@ def Ref2Address(base, byte_array, arch):
             return page_address + extend_sign(value64, 32) + imm12
         elif FindRegHex(r"[80-9F] 52$", byte_array, onlyOnce=True): # MOV instruction
             return instr2 >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
+        elif FindRegHex(r"[80-9F] 12$", byte_array, onlyOnce=True): # MOVN instruction
+            return ~(instr2 >> 5 & ((1 << 16) - 1)) # discard 11 MSB, discard 5 LSB
         elif (m := FindRegHex(r"[80-9F] 52  (.{3} [^72])? . . [A0-BF] 72$", byte_array, onlyOnce=True)): # MOV & MOVK instruction
             if m.group(1): instr = instr3
             immlo = instr >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
