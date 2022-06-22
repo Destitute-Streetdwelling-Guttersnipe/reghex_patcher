@@ -53,8 +53,8 @@ st_blacklist_fixes = [
 ]
 string_detections = [ # detect string in data & code sections
 ]
-ref_detections = [
-    # detection for number, string and function inside AMD64 instructions
+ref_detections = [ # detection for references to found number, string and function
+    # `look_behind` reghex should only match 1 byte (to avoid taking too many bytes that could belong to the next occurrence)
     Fix(name="amd64", reghex=r"(?<= .{3} C7 44 . . | . C7 85 .{4} | (?:48 C7 05|C7 84 .) .{4} ) . |" ## mov dword [r?+r?+?], ?; move [rip+?], ?
                           + r"(?<= . 48 81 7D . | 48 81 7C 24 . ) . |"
                           + r"(?<= . . 8D [81 87] | . 41 8D 8F | 41 8D 8C 24 | . . 81 [FC FF] ) . |" ## lea eax, [rdi+?]; lea ecx, [r1?+?]; lea ecx, [r12+?]; cmp edi, ?; cmp r?d, ?;
@@ -62,7 +62,6 @@ ref_detections = [
                           + r"(?<=  8A [80-84 86-8C 8E-94 96-97] | . [B8-BB BD-BF 3D] ) . |" ## mov ?l, byte ptr [r? + ?]; mov e?, ?; mov r?, ?; cmp eax, ?
                           + r"(?<= . . [E8 E9] | (?:[48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] ) .", ## call ?; jmp ?; lea r?, [rip + ?]; movups xmm0, xmmword ptr [rip + ?]
         arch="amd64", look_behind=True),
-    # detection for number, string and function inside ARM64 instructions
     Fix(name="arm64", reghex=r". (?=. . [10 30 50 70 94 97 14 17]) | (?<=.{4} [90 B0 D0 F0] | [90 B0 D0 F0] .{3} [^91])  . (?=. . 91)" ## adr ? ; bl ? ; b ? ; adrp x?, ? ; add x?, x?, ?
                           + r"| . (?=. [80-9F] [12 52]) | (?<=.{4} [80-9F] 52 | [80-9F] 52 .{4})  . (?=. [A0-BF] 72)",
         arch="arm64", look_behind=True),
