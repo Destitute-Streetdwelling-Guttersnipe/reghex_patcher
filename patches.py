@@ -5,15 +5,11 @@ import collections
 zero4 = "00 " * 4
 # for x64 CPU
 nop = "90"
-nop3 = "90 " * 3
-nop4 = "90 " * 4
 nop5 = "90 " * 5 # nop over E8 .{4} (call [dword])
 ret = "C3" # ret
 ret0 = "48 31 C0 C3" # xor rax, rax; ret
 ret1 = "48 31 C0 48 FF C0 C3" # xor rax, rax; inc rax; ret
 ret119 = "48 C7 C0 19 01 00 00 C3" # mov rax, 0x119; ret
-ret0_rcx = "48 31 C0  48 8B 11  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx, qword ptr [rcx]; cmp byte ptr [rdx], 0x2d; setne al; ret
-ret0_rdi = "48 31 C0  48 8B 17  80 3A 2D  0F 95 C0  C3" # xor rax, rax; mov rdx, qword ptr [rdi]; cmp byte ptr [rax], 0x2d; setne al; ret
 # comparison of detection methods:
 # - detection of instructions in code section is the least stable among versions, platforms (arm64, amd64) and OS (Windows, Linux, macOS)
 # - detection of constants in code section is more stable among versions and OS, but different among platforms (arm64, amd64)
