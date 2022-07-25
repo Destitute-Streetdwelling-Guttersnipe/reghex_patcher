@@ -9,10 +9,11 @@ def main():
     output_file = sys.argv[2] if len(sys.argv) > 2 else exit() # discard patched data if output_file is omitted
     with open(output_file, "wb") as file: file.write(data) and print(f"[+] Saved to {output_file}")
 
-def FindRegHex(reghex, data, onlyOnce = False):
+def FindRegHex(reghex, data):
     regex = bytes(re.sub(r"\b([0-9a-fA-F]{2})\b", r"\\x\1", reghex), 'utf-8') # escape hex bytes
-    it = re.finditer(regex.replace(b' ', b''), data, re.DOTALL) # remove all spaces
-    return next(it, None) if onlyOnce else it
+    return re.finditer(regex.replace(b' ', b''), data, re.DOTALL) # remove all spaces
+
+def FindRegHexOnce(reghex, data): return next(FindRegHex(reghex, data), None)
 
 def PatchDetectedFile(patched, file):
     refs = {} # reset refs for each file
@@ -62,36 +63,36 @@ def Ref2Address(base, byte_array, arch):
     if arch == ARM64 and base % 4 == 0: # PC relative instructions of arm64
         (instr3, instr, instr2) = struct.unpack("<3L", byte_array[-4*3:]) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
-        if (m := FindRegHex(r"[90 B0 D0 F0] (.{3} [^91])? .{3} 91$", byte_array, onlyOnce=True)): # ADRP & ADD instructions
+        if (m := FindRegHexOnce(r"[90 B0 D0 F0] (.{3} [^91])? .{3} 91$", byte_array)): # ADRP & ADD instructions
             if m.group(1): instr = instr3
             value64 = ((instr & 0x60000000) >> 29 | (instr & 0xffffe0) >> 3) << 12 # PAGE_SIZE = 0x1000 = 4096
             imm12 = (instr2 & 0x3ffc00) >> 10
             if instr2 & 0xc00000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
             return page_address + extend_sign(value64, 32) + imm12
-        elif FindRegHex(r"[80-9F] 52$", byte_array, onlyOnce=True): # MOV instruction
+        elif FindRegHexOnce(r"[80-9F] 52$", byte_array): # MOV instruction
             return instr2 >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
-        elif FindRegHex(r"[80-9F] 12$", byte_array, onlyOnce=True): # MOVN instruction
+        elif FindRegHexOnce(r"[80-9F] 12$", byte_array): # MOVN instruction
             return ~(instr2 >> 5 & ((1 << 16) - 1)) # discard 11 MSB, discard 5 LSB
-        elif (m := FindRegHex(r"[80-9F] 52  (.{3} [^72])? . . [A0-BF] 72$", byte_array, onlyOnce=True)): # MOV & MOVK instruction
+        elif (m := FindRegHexOnce(r"[80-9F] 52  (.{3} [^72])? . . [A0-BF] 72$", byte_array)): # MOV & MOVK instruction
             if m.group(1): instr = instr3
             immlo = instr >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
             immhi = instr2 >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
             return (immhi << 16) + immlo
-        elif FindRegHex(r"[94 97 14 17]$", byte_array, onlyOnce=True): # BL / B instruction
+        elif FindRegHexOnce(r"[94 97 14 17]$", byte_array): # BL / B instruction
             address = instr2 << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
             return base + extend_sign(address, 27)
-        elif FindRegHex(r"[10 30 50 70]$", byte_array, onlyOnce=True): # ADR instruction
+        elif FindRegHexOnce(r"[10 30 50 70]$", byte_array): # ADR instruction
             immhi = instr2 >> 5 & ((1 << 19) - 1) # discard 8 MSB, discard 5 LSB
             immlo = instr2 >> 29 & ((1 << 2) - 1) # discard 1 MSB, discard 29 LSB
             return base + extend_sign(immhi << 2 + immlo, 20)
     elif arch == AMD64: # RVA & VA instructions of x64
-        if FindRegHex(r"(66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4], onlyOnce=True):
+        if FindRegHexOnce(r"(66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4]):
             return struct.unpack("<h", byte_array[-4:-2])[0] # 2-byte integer
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
-        if FindRegHex(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4], onlyOnce=True):
+        if FindRegHexOnce(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4]):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHex(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (48 C7 05|C7 85|C7 84 .) .{4} | C7 44 . . | 3D)$", byte_array[:-4], onlyOnce=True):
+        if FindRegHexOnce(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (48 C7 05|C7 85|C7 84 .) .{4} | C7 44 . . | 3D)$", byte_array[:-4]):
             return address # VA reference
     return base # return the input address if referenced address is not found
 
