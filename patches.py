@@ -48,7 +48,7 @@ sm_fixes = [
 st_blacklist_fixes = [
 ]
 string_detections = [ # detect string in data & code sections
-                         + r"(?:00 00 00 00){1,4} D5 A4 83 00  D9 A4 83 00  DC A4 83 00  DE A4 83 00"), # SublimeMerge
+                         + r"(?:00 00 00 00){1,4} D5 A4 83 00 (?:. A4 83 00)*? D9 A4 83 00 (?:. A4 83 00)*? DC A4 83 00 (?:. A4 83 00)*? DE A4 83 00"), # SublimeMerge
 ]
 ref_detections = [ # detection for references to found number, string and function
     # `look_behind` reghex should only match 1 byte (to avoid taking too many bytes that could belong to the next occurrence)
