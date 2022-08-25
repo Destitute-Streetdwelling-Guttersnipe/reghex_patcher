@@ -26,8 +26,8 @@ if [[ ! -f $package ]]; then
 	# direct link from https://www.sublimetext.com/download_thanks and https://www.sublimemerge.com/download_thanks
 fi
 case $package in
-    *.zip) unzip $package "$file" ;;
-    *    ) tar xf $package "$file" ;;
+    *.zip) unzip -p $package "$file" > sublime_$1_$2_$3 ;;
+    *    ) tar -Oxf $package "$file" > sublime_$1_$2_$3 ;;
 esac
-mv -v "$file" sublime_$1_$2_$3
+# mv -v "$file" sublime_$1_$2_$3
 echo extracted file: sublime_$1_$2_$3
