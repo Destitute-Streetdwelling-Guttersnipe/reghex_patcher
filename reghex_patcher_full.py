@@ -15,7 +15,7 @@ def FindRegHex(reghex, data):
 
 def FindRegHexOnce(reghex, data): return next(FindRegHex(reghex, data), None)
 
-def PatchByteSlice(patched, offset, end):
+def PatchByteSlice(patched, offset = 0, end = None):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
     for fix in FindFixes(file): ApplyFix(fix, patched, file, refs)
 
@@ -114,7 +114,7 @@ def PatchByteArray(data):
             print(f"\n[+] ---- at 0x{offset:x}: Executable for " + (arch := { 0x1000007: AMD64, 0x100000c: ARM64 }[cpu_type])) # die on unknown arch
             with open(sys.argv[1] + "_" + arch, "wb") as f: f.write(data[offset : offset + size]) # store detected file
             PatchByteSlice(data, offset, offset + size)
-    else: PatchByteSlice(data, 0, len(data))
+    else: PatchByteSlice(data)
 
 def FileInfo(data = b'', base_offset = 0):
     if re.search(b"^MZ", data):
