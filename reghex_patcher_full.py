@@ -113,7 +113,8 @@ def PatchByteArray(data):
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for " + (arch := { 0x1000007: AMD64, 0x100000c: ARM64 }[cpu_type])) # die on unknown arch
             with open(sys.argv[1] + "_" + arch, "wb") as f: f.write(data[offset : offset + size]) # store detected file
-            PatchByteSlice(data, offset, offset + size)
+            # PatchByteSlice(data[offset : offset + size]) # patch detected executable as if it were stored in a separate file
+            PatchByteSlice(data, offset, offset + size) # if arch == ARM64 else None
     else: PatchByteSlice(data)
 
 def FileInfo(data = b'', base_offset = 0):
