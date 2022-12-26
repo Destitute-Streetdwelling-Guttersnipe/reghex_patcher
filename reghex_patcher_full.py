@@ -2,8 +2,8 @@ credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leo
 import re, sys, struct, io, patches as Fixes
 
 def main():
-    print(f"[-] ---- {credits}")
-    input_file = sys.argv[1] if len(sys.argv) > 1 else exit(f"Usage: {sys.argv[0]} input_file [output_file]")
+    print(f"[-] ---- {credits}\nUsage: {sys.argv[0]} input_file [output_file]")
+    input_file = sys.argv[1] if len(sys.argv) > 1 else exit()
     with open(input_file, 'rb') as file: PatchByteArray(data := bytearray(file.read()))
 
     output_file = sys.argv[2] if len(sys.argv) > 2 else exit() # discard patched data if output_file is omitted
@@ -108,7 +108,7 @@ def FindFixes(file):
 
 def PatchByteArray(data):
     (magic, num_archs) = struct.unpack(">2L", data[:4*2])
-    if magic == 0xCAFEBABE: # MacOS universal binary
+    if magic == 0xCAFEBABE: # FAT_MAGIC of MacOS universal binary
         for header_o in range(4*2, 4*2 + num_archs * (header_s := 4*5), header_s):
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for " + (arch := { 0x1000007: AMD64, 0x100000c: ARM64 }[cpu_type])) # die on unknown arch
@@ -117,9 +117,9 @@ def PatchByteArray(data):
             PatchByteSlice(data, offset, offset + size) # if arch == ARM64 else None
     else: PatchByteSlice(data)
 
-def FileInfo(data = b'', base_offset = 0):
+def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
     if re.search(b"^MZ", data):
-        import pefile
+        import pefile # pip3 install pefile
         pe = pefile.PE(data=data, fast_load=True)
         FileInfo.arch = { 0x8664: AMD64, 0xAA64: ARM64 }[pe.FILE_HEADER.Machine] # die on unknown arch
         sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
