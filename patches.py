@@ -19,6 +19,7 @@ ret119 = "48 C7 C0 19 01 00 00 C3" # mov rax, 0x119; ret
 # - fix.name is splitted to set label for offsets of matching groups (from fix.reghex)
 # - fix.ref is unused, any matching groups that has 4 bytes will be check if it's a reference to a string/function
 # - fix.patch can be a string or a list of strings to patch each matching group
+# - fix.arch is used to match the architecture (amd64 or arm64)
 # - fix.look_behind is used to find the function that contains the matching groups
 Fix = collections.namedtuple('Fix', 'name reghex patch ref arch look_behind', defaults=('', '', '', False, '', None)) # reghex is regex with hex bytes
 st_wind_fixes = [
