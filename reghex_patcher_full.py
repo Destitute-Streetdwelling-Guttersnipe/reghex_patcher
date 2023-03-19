@@ -20,6 +20,7 @@ def PatchByteSlice(patched, offset = 0, end = None):
     for fix in FindFixes(file): ApplyFix(fix, patched, file, refs)
 
 def ApplyFix(fix, patched, file, refs, match = None, fn_o = None):
+    # if not fix.test: return # for testing any fix
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
