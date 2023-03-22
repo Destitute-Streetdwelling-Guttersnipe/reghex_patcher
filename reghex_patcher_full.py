@@ -101,10 +101,10 @@ def FindFixes(file):
     detected = set()
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, file.data):
-            detected |= set([ fix.name, *m.groups() ])
+            detected |= set([ fix.name, *m.groups() ]) # combine all matched detections
             print(f"\n[-] Spotted at {Position(file, offset=m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
-        if set(tags) == detected: return [fix for fix in fixes if not fix.arch or fix.arch == file.arch] # filter out different arch
+        if set(tags) == detected: return [fix for fix in fixes if fix.arch in [None, file.arch]] # filter out different arch
     exit("[!] Cannot find fixes for target file")
 
 def PatchByteArray(data):

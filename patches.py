@@ -94,8 +94,8 @@ tagged_fixes = [
     # ([        "SublimeMerge",                      ], st_sm_remote_check_fixes + sm_license_check_fixes),
 ]
 detections = [
-    Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
-    Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # platform: windows, osx, linux
+    Fix(name="SublimeText", reghex=r"/updates/4/(?:stable|dev)_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
+    Fix(name="SublimeMerge", reghex=r"/updates/(?:stable|dev)_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # platform: windows, osx, linux
     # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
     # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
 ]
