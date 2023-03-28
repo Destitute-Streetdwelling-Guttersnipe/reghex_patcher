@@ -76,28 +76,33 @@ st_license_check_fixes = [ # data section fixes can be applied on all platforms
 sm_license_check_fixes = [ # data section fixes can be applied on all platforms
 ]
 tagged_fixes = [
-    ([b"x64", "SublimeText" ,            b"windows"], string_detections + st_fixes + st_wind_fixes         + ref_detections),
-    ([b"x64", "SublimeText" ,            b"osx"    ], string_detections + st_fixes + st_macos_fixes        + ref_detections),
-    ([        "SublimeText" ,  b"arm64", b"osx"    ], string_detections + st_fixes + st_macos_fixes_arm64  + ref_detections),
-    ([        "SublimeText" ,  b"arm64", b"linux"  ], string_detections + st_fixes + st_linux_fixes_arm64  + ref_detections),
-    ([b"x64", "SublimeText" ,            b"linux"  ], string_detections + st_fixes + st_linux_fixes        + ref_detections),
-    ([b"x64", "SublimeMerge",            b"windows"], string_detections + sm_fixes + sm_wind_fixes         + ref_detections),
-    ([b"x64", "SublimeMerge" ,           b"osx"    ], string_detections + sm_fixes + sm_macos_fixes        + ref_detections),
-    ([        "SublimeMerge" , b"arm64", b"osx"    ], string_detections + sm_fixes + sm_macos_fixes_arm64  + ref_detections),
-    ([        "SublimeMerge" , b"arm64", b"linux"  ], string_detections + sm_fixes + sm_linux_fixes_arm64  + ref_detections),
-    ([b"x64", "SublimeMerge",            b"linux"  ], string_detections + sm_fixes + sm_linux_fixes        + ref_detections),
+    (["SublimeText" ,                   ], string_detections + st_fixes),
+    (["SublimeMerge",                   ], string_detections + sm_fixes),
+
+    (["SublimeText" , "amd64", "windows"], st_wind_fixes       ),
+    (["SublimeText" , "amd64", "osx"    ], st_macos_fixes      ),
+    (["SublimeText" , "arm64", "osx"    ], st_macos_fixes_arm64),
+    (["SublimeText" , "arm64", "linux"  ], st_linux_fixes_arm64),
+    (["SublimeText" , "amd64", "linux"  ], st_linux_fixes      ),
+
+    (["SublimeMerge", "amd64", "windows"], sm_wind_fixes       ),
+    (["SublimeMerge", "amd64", "osx"    ], sm_macos_fixes      ),
+    (["SublimeMerge", "arm64", "osx"    ], sm_macos_fixes_arm64),
+    (["SublimeMerge", "arm64", "linux"  ], sm_linux_fixes_arm64),
+    (["SublimeMerge", "amd64", "linux"  ], sm_linux_fixes      ),
+
+    (["SublimeText" ,                   ], ref_detections),
+    (["SublimeMerge",                   ], ref_detections),
     # ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
     # ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),
-    ([        "SublimeText" ,                      ], string_detections + ref_detections),
-    ([        "SublimeMerge",                      ], string_detections + ref_detections),
     # ([        "SublimeText" ,                      ], st_sm_remote_check_fixes + st_license_check_fixes),
     # ([        "SublimeMerge",                      ], st_sm_remote_check_fixes + sm_license_check_fixes),
 ]
 detections = [
-    Fix(name="SublimeText", reghex=r"/updates/4/(?:stable|dev)_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
-    Fix(name="SublimeMerge", reghex=r"/updates/(?:stable|dev)_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # platform: windows, osx, linux
-    # Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
-    # Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
+    # Fix(name="SublimeText", reghex=r"/updates/4/(?:stable|dev)_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # arch: arm64, x64, x32
+    # Fix(name="SublimeMerge", reghex=r"/updates/(?:stable|dev)_update_check\?version=\d+&platform=(\w+)&arch=(\w+)"), # platform: windows, osx, linux
+    Fix(name="SublimeText", reghex=r"/updates/4/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
+    Fix(name="SublimeMerge", reghex=r"/updates/\w+_update_check\?version=\d+&platform=\w+&arch=\w+"),
 ]
 
 # sm: /updates/stable_update_check?version=2059&platform=linux&arch=x64

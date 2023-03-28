@@ -98,14 +98,13 @@ def Ref2Address(base, byte_array, arch):
     return base # return the input address if referenced address is not found
 
 def FindFixes(file):
-    detected = set()
+    detected = set([ file.arch, file.os ])
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, file.data):
             detected |= set([ fix.name, *m.groups() ]) # combine all matched detections
             print(f"\n[-] Spotted at {Position(file, offset=m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
-    for tags, fixes in Fixes.tagged_fixes:
-        if set(tags) == detected: return [fix for fix in fixes if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
-    exit("[!] Cannot find fixes for target file")
+    fixes = [fixes for tags, fixes in Fixes.tagged_fixes if set(tags) - detected == set()] # combine tagged_fixes that is subset of detected list
+    return [fix for fix in sum(fixes, []) if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
 
 def PatchByteArray(data):
     (magic, num_archs) = struct.unpack(">2L", data[:4*2])
