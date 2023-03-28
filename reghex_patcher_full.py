@@ -104,7 +104,7 @@ def FindFixes(file):
             detected |= set([ fix.name, *m.groups() ]) # combine all matched detections
             print(f"\n[-] Spotted at {Position(file, offset=m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
     for tags, fixes in Fixes.tagged_fixes:
-        if set(tags) == detected: return [fix for fix in fixes if fix.arch in [None, file.arch]] # filter out different arch
+        if set(tags) == detected: return [fix for fix in fixes if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
     exit("[!] Cannot find fixes for target file")
 
 def PatchByteArray(data):
@@ -119,22 +119,23 @@ def PatchByteArray(data):
     else: PatchByteSlice(data)
 
 def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
-    if re.search(b"^MZ", data):
+    if fileId := re.search(b"^MZ", data):
         import pefile # pip3 install pefile
         pe = pefile.PE(data=data, fast_load=True)
         FileInfo.arch = { 0x8664: AMD64, 0xAA64: ARM64 }[pe.FILE_HEADER.Machine] # die on unknown arch
         sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
-    elif re.search(b"^\x7FELF", data):
+    elif fileId := re.search(b"^\x7FELF", data):
         from elftools.elf.elffile import ELFFile # pip3 install pyelftools
         elf = ELFFile(io.BytesIO(data))
         FileInfo.arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64 }[elf.header['e_machine']] # die on unknown arch
         sections = [(s.header['sh_addr'], s.header['sh_offset'], s.header['sh_size']) for s in elf.iter_sections()]
-    elif re.search(b"^\xCF\xFA\xED\xFE", data):
+    elif fileId := re.search(b"^\xCF\xFA\xED\xFE", data):
         from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
         FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64 }[macho.get_header().cputype] # die on unknown arch
         sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
     else: exit("[!] Cannot detect file type")
+    FileInfo.os = {b"MZ": 'windows', b"\x7FELF": 'linux', b"\xCF\xFA\xED\xFE": 'osx'}[fileId.group(0)]
     FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o], reverse=True) # sort by address
     FileInfo.offset2address = sorted([(o, addr, size) for addr, o, size in sections if addr and o], reverse=True) # sort by offset
     FileInfo.data, FileInfo.base_offset = data, base_offset
