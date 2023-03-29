@@ -17,10 +17,9 @@ def FindRegHexOnce(reghex, data): return next(FindRegHex(reghex, data), None)
 
 def PatchByteSlice(patched, offset = 0, end = None):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
-    for fix in FindFixes(file): ApplyFix(fix, patched, file, refs)
+    for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) # if fix.test else None # for testing any fix
 
 def ApplyFix(fix, patched, file, refs, match = None, fn_o = None):
-    # if not fix.test: return # for testing any fix
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
@@ -39,7 +38,7 @@ def ApplyFix(fix, patched, file, refs, match = None, fn_o = None):
 
 def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
     if (b := bytes.fromhex(patch[i-1] if isinstance(patch, list) else patch)): print(f"[+] Patch at {p_info} {ref} = {b.hex(' ')}") # use the whole fix.patch if it's not a list
-    patched[file_o : file_o + len(b)] = b
+    patched[file_o : file_o + len(b)] = b # has no effect if b is empty
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
 
@@ -58,7 +57,7 @@ class Position:
         self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
         self.file_o = self.offset + file.base_offset if self.offset != None else None
-        self.info = f"a:0x{self.address or 0:04x} " + (f"o:0x{self.file_o:06x}" if self.file_o else ' ' * 6)
+        self.info = f"a:0x{self.address or 0:04x} " + (f"o:0x{self.file_o:06x}" if self.file_o else '')
 
 def Ref2Address(base, byte_array, arch):
     if arch == ARM64 and base % 4 == 0: # PC relative instructions of arm64
@@ -113,7 +112,6 @@ def PatchByteArray(data):
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
             print(f"\n[+] ---- at 0x{offset:x}: Executable for " + (arch := { 0x1000007: AMD64, 0x100000c: ARM64 }[cpu_type])) # die on unknown arch
             # with open(sys.argv[1] + "_" + arch, "wb") as f: f.write(data[offset : offset + size]) # store detected file
-            # PatchByteSlice(data[offset : offset + size]) # patch detected executable as if it were stored in a separate file
             PatchByteSlice(data, offset, offset + size) # if arch == ARM64 else None
     else: PatchByteSlice(data)
 
