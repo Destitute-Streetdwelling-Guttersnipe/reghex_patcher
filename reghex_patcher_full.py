@@ -28,17 +28,17 @@ def ApplyFix(fix, patched, file, refs, match = None, fn_o = 0):
                 p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-8 : p0.offset+4], file.arch))
             p_info = p0.info + " -> " + (p.info if p.address != p0.address else '').ljust(len(p0.info)) # keep length unchanged for output alignment
             if not fix.look_behind:
-                refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
+                ref = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
-                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, refs[p0.address])
+                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, ref)
             elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))): # look behind if p0 or p is in refs
                 fn = Position(file, offset=LastFunction(file.data, fn_o, p0.offset, file.arch)) # find function containing this match
                 print("[-] Found fn " + ['.' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)] + f" <- {p_info} {ref}") # show fn.info when a new function is found
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
 def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
-    if (b := bytes.fromhex(patch[i-1] if isinstance(patch, list) else patch)): print(f"[+] Patch at {p_info} {ref} = {b.hex(' ')}") # use the whole fix.patch if it's not a list
-    patched[file_o : file_o + len(b)] = b # has no effect if b is empty
+    if (h := patch[i-1] if isinstance(patch, list) else patch): print(f"[+] Patch at {p_info} {ref} = {h}") # use the whole fix.patch if it's not a list
+    if (b := bytes.fromhex(h)): patched[file_o : file_o + len(b)] = b # has no effect if b is empty
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
 
