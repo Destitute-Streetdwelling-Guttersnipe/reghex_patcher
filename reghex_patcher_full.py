@@ -1,12 +1,12 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leogx9r & rainbowpigeon for inspiration)"
 import re, sys, struct, io, patches as Fixes
 
-def main():
-    print(f"[-] ---- {credits}\nUsage: {sys.argv[0]} input_file [output_file]")
-    input_file = sys.argv[1] if len(sys.argv) > 1 else exit()
+def main(argv):
+    print(f"[-] ---- {credits}\nUsage: {argv[0]} input_file [output_file]")
+    input_file = argv[1] if len(argv) > 1 else exit()
     with open(input_file, 'rb') as file: PatchByteArray(data := bytearray(file.read()))
 
-    output_file = sys.argv[2] if len(sys.argv) > 2 else exit() # discard patched data if output_file is omitted
+    output_file = argv[2] if len(argv) > 2 else exit() # discard patched data if output_file is omitted
     with open(output_file, "wb") as file: file.write(data) and print(f"[+] Saved to {output_file}")
 
 def FindRegHex(reghex, data):
@@ -110,9 +110,8 @@ def PatchByteArray(data):
     if magic == 0xCAFEBABE: # FAT_MAGIC of MacOS universal binary
         for header_o in range(4*2, 4*2 + num_archs * (header_s := 4*5), header_s):
             (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
-            print(f"\n[+] ---- at 0x{offset:x}: Executable for " + (arch := { 0x1000007: AMD64, 0x100000c: ARM64 }[cpu_type])) # die on unknown arch
-            # with open(sys.argv[1] + "_" + arch, "wb") as f: f.write(data[offset : offset + size]) # store detected file
-            PatchByteSlice(data, offset, offset + size) # if arch == ARM64 else None
+            print(f"\n[+] ---- at 0x{offset:x}: Executable for " + { 0x1000007: AMD64, 0x100000c: ARM64 }[cpu_type]) # die on unknown arch
+            PatchByteSlice(data, offset, offset + size) # if cpu_type == 0x100000c else None
     else: PatchByteSlice(data)
 
 def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
@@ -131,6 +130,7 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
         macho = MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
         FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64 }[macho.get_header().cputype] # die on unknown arch
         sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
+        # with open(sys.argv[1] + "_" + FileInfo.arch, "wb") as f: f.write(data) # store detected file
     else: exit("[!] Cannot detect file type")
     FileInfo.os = {b"MZ": 'windows', b"\x7FELF": 'linux', b"\xCF\xFA\xED\xFE": 'osx'}[fileId.group(0)]
     FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o], reverse=True) # sort by address
@@ -142,4 +142,4 @@ def ConvertBetweenAddressAndOffset(sections, position):
     for start, other_start, size in sections:
         if position != None and start <= position < start + size: return position - start + other_start
 
-if __name__ == "__main__": main()
+if __name__ == "__main__": main(sys.argv)
