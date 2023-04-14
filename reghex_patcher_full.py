@@ -27,12 +27,12 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
                 p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
             p_info = p0.info + " -> " + (p.info if p.address != p0.address else '').ljust(len(p0.info)) # keep length unchanged for output alignment
             if p0.address and not fix.look_behind:
-                ref = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
+                ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
-                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, ref)
-            elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))): # look behind if p0 or p is in refs
+                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, ref0)
+            elif (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
                 hasNewFn = fn != (fn := LastFunction(file, fn or Position(file, offset=0), p0)) # find function containing this match
-                print("[-] Found fn " + ['-' * len(fn.info), fn.info][hasNewFn] + f" <- {p_info} {ref}") # show fn.info when a new function is found
+                print("[-] Found fn " + ['-' * len(fn.info), fn.info][hasNewFn] + f" <- {p_info} {ref0 or '-'+ref}") # show fn.info when a new function is found
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
 def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
