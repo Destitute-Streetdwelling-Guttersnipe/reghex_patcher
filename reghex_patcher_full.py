@@ -19,7 +19,7 @@ def PatchByteSlice(patched, offset = 0, end = None):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
     for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) # if fix.test else None # for testing any fix
 
-def ApplyFix(fix, patched, file, refs, match = None, fn_o = 0):
+def ApplyFix(fix, patched, file, refs, match = None, fn = None):
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
@@ -32,8 +32,8 @@ def ApplyFix(fix, patched, file, refs, match = None, fn_o = 0):
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
                 if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, ref)
             elif 1 < len(ref := refs.get(p0.address, '.' + refs.get(p.address, ''))): # look behind if p0 or p is in refs
-                fn = Position(file, offset=LastFunction(file, fn_o, p0.offset)) # find function containing this match
-                print("[-] Found fn " + ['-' * len(fn.info), fn.info][fn_o != (fn_o := fn.offset)] + f" <- {p_info} {ref}") # show fn.info when a new function is found
+                hasNewFn = fn != (fn := LastFunction(file, fn or Position(file, offset=0), p0)) # find function containing this match
+                print("[-] Found fn " + ['-' * len(fn.info), fn.info][hasNewFn] + f" <- {p_info} {ref}") # show fn.info when a new function is found
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
 def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
@@ -42,15 +42,15 @@ def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
 
-def LastFunction(file, start, end, last = None):
+def LastFunction(file, start, end, last = None): # file: FileInfo, start: Position, end: Position
     function_reghex = { # reghex for function epilogue and function prologue
         AMD64:  r"(?:(?:C3|EB .|[E8 E9] .{4}) [66]*(?:90|CC|0F 0B|0F 1F [00 40 44 80 84] [00]*)* | 00{8})" ## (ret | jmp ? | call ?) (nop | int3 | ud2)
               + r"( (48 89 54 24 .)? ( [53 55-57] | 41 [54-57] | 48 8B EC | 48 89 E5 | 48 [81 83] EC )+ )", ## mov qword[rsp+?], rdx; (push r? | mov rbp, rsp | sub rsp, ?)
         ARM64:  r"(?:(?:C0 03 5F D6 | .{3} [14 17 94 97]) (?:1F 20 03 D5)* | 00{8}) ((. 03 1E AA  .{3} [94 97]  FE 03 . AA)?" ## mov x?, x30 ; bl ? ; mov x30, x? 
               + r"( FF . . D1 | [F4 F6 F8 FA FC FD] . . [A9 F9] | [E9 EB] . . 6D | FD . . 91 )+)", ## sub sp, sp, ? ; stp x?, x?, [sp + ?] ; add x29, sp, ?
     }[file.arch] # die on unknown arch
-    for m in FindRegHex(function_reghex, file.data[start:end]): last = m
-    return start + last.start(1) if last else start
+    for m in FindRegHex(function_reghex, file.data[start.offset:end.offset]): last = m
+    return Position(file, offset=start.offset + last.start(1)) if last else start
 
 class Position:
     def __init__(self, file, address = None, offset = None):
