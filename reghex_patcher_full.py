@@ -25,7 +25,7 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
             if p0.address == None: continue # skip if p0 is not in a section
             if fix.look_behind or (i > 0 and len(match.group(i)) == 4): # find referenced address from any 4-byte group
-                p = Position(file, address=Ref2Address(p0.address, file.data[p0.offset-8 : p0.offset+4], file.arch))
+                p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
             p_info = p0.info + " -> " + (p.info if p.address != p0.address else '').ljust(len(p0.info)) # keep length unchanged for output alignment
             if not fix.look_behind:
                 ref = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
@@ -59,9 +59,10 @@ class Position:
         self.file_o = self.offset + file.base_offset if self.offset != None else None
         self.info = f"a:0x{self.address or 0:04x} " + (f"o:0x{self.file_o:06x}" if self.file_o else '')
 
-def Ref2Address(base, byte_array, arch):
-    if arch == ARM64 and base % 4 == 0: # PC relative instructions of arm64
-        (instr3, instr, instr2) = struct.unpack("<3L", byte_array[-4*3:]) # 2 unsigned long in little-endian
+def Ref2Address(base, offset, file):
+    byte_array = file.data[offset-8 : offset+4]
+    if file.arch == ARM64 and base % 4 == 0: # PC relative instructions of arm64
+        (instr3, instr, instr2) = struct.unpack("<3L", byte_array) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
         if (m := FindRegHexOnce(r"[90 B0 D0 F0] (.{3} [^91])? .{3} 91$", byte_array)): # ADRP & ADD instructions
             if m.group(1): instr = instr3
@@ -86,7 +87,7 @@ def Ref2Address(base, byte_array, arch):
             immhi = instr2 >> 5 & ((1 << 19) - 1) # discard 8 MSB, discard 5 LSB
             immlo = instr2 >> 29 & ((1 << 2) - 1) # discard 1 MSB, discard 29 LSB
             return base + extend_sign(immhi << 2 + immlo, 20)
-    elif arch == AMD64: # RVA & VA instructions of x64
+    elif file.arch == AMD64: # RVA & VA instructions of x64
         if FindRegHexOnce(r"(66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4]):
             return struct.unpack("<h", byte_array[-4:-2])[0] # 2-byte integer
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
