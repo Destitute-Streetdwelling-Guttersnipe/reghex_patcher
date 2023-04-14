@@ -23,11 +23,10 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
-            if p0.address == None: continue # skip if p0 is not in a section
-            if fix.look_behind or (i > 0 and len(match.group(i)) == 4): # find referenced address from any 4-byte group
+            if p0.address and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
             p_info = p0.info + " -> " + (p.info if p.address != p0.address else '').ljust(len(p0.info)) # keep length unchanged for output alignment
-            if not fix.look_behind:
+            if p0.address and not fix.look_behind:
                 ref = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
                 if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, ref)
