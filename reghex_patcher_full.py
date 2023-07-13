@@ -25,18 +25,17 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
             if p0.address and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
-            p_info = p0.info + " -> " + (p.info if p.address != p0.address else '').ljust(len(p0.info)) # keep length unchanged for output alignment
             if p0.address and not fix.look_behind:
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
-                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p_info, ref0)
+                if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p.ref_info(p0, ref0))
             elif (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
                 hasNewFn = fn != (fn := LastFunction(file, fn or Position(file, offset=0), p0)) # find function containing this match
-                print("[-] Found fn " + ['-' * len(fn.info), fn.info][hasNewFn] + f" <- {p_info} {ref0 or '-'+ref}") # show fn.info when a new function is found
+                print("[-] Found fn " + ['-' * len(fn.info), fn.info][hasNewFn] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
-def PatchAtOffset(file_o, patched, patch, i, p_info, ref):
-    if (h := patch[i-1] if isinstance(patch, list) else patch): print(f"[+] Patch at {p_info} {ref} = {h}") # use the whole fix.patch if it's not a list
+def PatchAtOffset(file_o, patched, patch, i, ref_info):
+    if (h := patch[i-1] if isinstance(patch, list) else patch): print(f"[+] Patch at {ref_info} = {h}") # use the whole fix.patch if it's not a list
     if (b := bytes.fromhex(h)): patched[file_o : file_o + len(b)] = b # has no effect if b is empty
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
@@ -57,6 +56,8 @@ class Position:
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
         self.file_o = self.offset + file.base_offset if self.offset != None else None
         self.info = f"a:0x{self.address or 0:04x} " + (f"o:0x{self.file_o:06x}" if self.file_o else '')
+    def ref_info(self, p0, ref):
+        return f"{p0.info} -> {self.info if self.address != p0.address else '':{len(p0.info)}} {ref}" # keep length unchanged for output alignment
 
 def Ref2Address(base, offset, file):
     byte_array = file.data[offset-8 : offset+4]
