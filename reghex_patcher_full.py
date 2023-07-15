@@ -32,11 +32,10 @@ def ApplyFix(fix, patched, file, refs, match = None):
             else: FindNearestFunction(file, refs, p0, p)
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
-def FindNearestFunction(file, refs, p0, p, memo = {}): # memo stores values from previous call
+def FindNearestFunction(file, refs, p0, p, memo = [None]): # memo stores values from previous call
     if (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
-        hasNewFn = memo.get('fn') != (fn := LastFunction(file, memo.get('fn') or Position(file, offset=0), p0)) # find function containing this match
-        memo['fn'] = fn
-        print("[-] Found fn " + ['-' * len(fn.info), fn.info][hasNewFn] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
+        fn0, memo[0] = memo[0], (fn := LastFunction(file, memo[0] or Position(file, offset=0), p0)) # find function containing this match
+        print("[-] Found fn " + ['-' * len(fn.info), fn.info][fn0 != fn] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
 
 def PatchAtOffset(file_o, patched, patch, i, ref_info):
     if (h := patch[i-1] if isinstance(patch, list) else patch): print(f"[+] Patch at {ref_info} = {h}") # use the whole fix.patch if it's not a list
