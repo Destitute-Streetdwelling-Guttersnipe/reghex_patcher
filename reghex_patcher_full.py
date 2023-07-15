@@ -19,7 +19,7 @@ def PatchByteSlice(patched, offset = 0, end = None):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
     for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) # if fix.test else None # for testing any fix
 
-def ApplyFix(fix, patched, file, refs, match = None, fn = None):
+def ApplyFix(fix, patched, file, refs, match = None):
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
@@ -29,14 +29,14 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
                 if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p.ref_info(p0, ref0))
-            else: fn = FindNearestFunction(fn, file, refs, p0, p)
+            else: FindNearestFunction(file, refs, p0, p)
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
-def FindNearestFunction(fn, file, refs, p0, p):
+def FindNearestFunction(file, refs, p0, p, memo = {}): # memo stores values from previous call
     if (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
-        hasNewFn = fn != (fn := LastFunction(file, fn or Position(file, offset=0), p0)) # find function containing this match
+        hasNewFn = memo.get('fn') != (fn := LastFunction(file, memo.get('fn') or Position(file, offset=0), p0)) # find function containing this match
+        memo['fn'] = fn
         print("[-] Found fn " + ['-' * len(fn.info), fn.info][hasNewFn] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
-    return fn
 
 def PatchAtOffset(file_o, patched, patch, i, ref_info):
     if (h := patch[i-1] if isinstance(patch, list) else patch): print(f"[+] Patch at {ref_info} = {h}") # use the whole fix.patch if it's not a list
