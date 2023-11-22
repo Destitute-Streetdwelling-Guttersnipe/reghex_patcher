@@ -52,6 +52,8 @@ st_blacklist_fixes = [
 string_detections = [ # detect string in data & code sections
                          + r"(?:00 00 00 00){1,4} D5 A4 83 00 (?:. A4 83 00)*? D9 A4 83 00 (?:. A4 83 00)*? DC A4 83 00 (?:. A4 83 00)*? DE A4 83 00"), # SublimeMerge
 ]
+startup_fixes = [
+]
 ref_detections = [ # detection for references to found number, string and function
     # `look_behind` reghex should only match 1 byte (to avoid taking too many bytes that could belong to the next occurrence)
     Fix(name="amd64", reghex=r"(?<= .{4} 48 C7 06 | .{3} C7 44 . . | (?:. C7 [05 85]|C7 84 .) .{4} ) . |" ## move qword [rsi], ?; move [rcx+rdx+?], ?; move [r?p+????], ?; mov [r?+r?+????], ?
@@ -76,8 +78,8 @@ st_license_check_fixes = [ # data section fixes can be applied on all platforms
 sm_license_check_fixes = [ # data section fixes can be applied on all platforms
 ]
 tagged_fixes = [
-    (["SublimeText" ,                   ], string_detections + st_fixes),
-    (["SublimeMerge",                   ], string_detections + sm_fixes),
+    (["SublimeText" ,                   ], startup_fixes + st_fixes),
+    (["SublimeMerge",                   ], startup_fixes + sm_fixes),
 
     (["SublimeText" , "amd64", "windows"], st_wind_fixes       ),
     (["SublimeText" , "amd64", "osx"    ], st_macos_fixes      ),
@@ -91,8 +93,8 @@ tagged_fixes = [
     (["SublimeMerge", "arm64", "linux"  ], sm_linux_fixes_arm64),
     (["SublimeMerge", "amd64", "linux"  ], sm_linux_fixes      ),
 
-    (["SublimeText" ,                   ], ref_detections),
-    (["SublimeMerge",                   ], ref_detections),
+    (["SublimeText" ,                   ], string_detections + ref_detections),
+    (["SublimeMerge",                   ], string_detections + ref_detections),
     # ([        "SublimeText" ,                      ], st_blacklist_fixes + st_delay_fixes),
     # ([        "SublimeMerge",                      ], sm_blacklist_fixes + sm_delay_fixes),
     # ([        "SublimeText" ,                      ], st_sm_remote_check_fixes + st_license_check_fixes),
