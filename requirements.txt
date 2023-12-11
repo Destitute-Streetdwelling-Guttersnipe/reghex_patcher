@@ -1,0 +1,3 @@
+pefile
+pyelftools
+macho_parser @ git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
