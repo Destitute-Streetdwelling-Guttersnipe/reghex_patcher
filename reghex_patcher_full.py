@@ -34,7 +34,7 @@ def ApplyFix(fix, patched, file, refs, match = None):
 
 def FindNearestFunction(file, refs, p0, p, memo = [None]): # memo stores values from previous call
     if (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
-        fn0, memo[0] = memo[0], (fn := LastFunction(file, memo[0] or Position(file, offset=0), p0)) # find function containing this match
+        memo[0] = fn = LastFunction(file, (fn0 := memo[0]) or Position(file, offset=0), p0) # find function containing this match
         print("[-] Found fn " + ['-' * len(fn.info), fn.info][fn0 != fn] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
 
 def PatchAtOffset(file_o, patched, patch, i, ref_info):
