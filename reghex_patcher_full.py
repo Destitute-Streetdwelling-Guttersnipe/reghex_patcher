@@ -67,29 +67,26 @@ def Ref2Address(base, offset, file):
     if file.arch == ARM64 and base % 4 == 0: # PC relative instructions of arm64
         (instr3, instr, instr2) = struct.unpack("<3L", byte_array) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
+        bits2number = lambda bits, skips, count: (bits >> skips) & ((1 << count) - 1) # skip some LSB and extract some bits
         if (m := FindRegHexOnce(r"[90 B0 D0 F0] (.{3} [^91])? .{3} 91$", byte_array)): # ADRP & ADD instructions
             if m.group(1): instr = instr3
-            value64 = ((instr & 0x60000000) >> 29 | (instr & 0xffffe0) >> 3) << 12 # PAGE_SIZE = 0x1000 = 4096
-            imm12 = (instr2 & 0x3ffc00) >> 10
-            if instr2 & 0xc00000: imm12 <<= 12
+            page_offset = ((bits2number(instr, 5, 19) << 2) + bits2number(instr, 29, 2)) << 12 # PAGE_SIZE = 0x1000 = 4096
+            imm12 = bits2number(instr2, 10, 12)
+            if instr2 & 0x400000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
-            return page_address + extend_sign(value64, 32) + imm12
-        elif FindRegHexOnce(r"[80-9F] 52$", byte_array): # MOV instruction
-            return instr2 >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
-        elif FindRegHexOnce(r"[80-9F] 12$", byte_array): # MOVN instruction
-            return ~(instr2 >> 5 & ((1 << 16) - 1)) # discard 11 MSB, discard 5 LSB
+            return page_address + extend_sign(page_offset, 32) + imm12
+        elif m := FindRegHexOnce(r"[80-9F] (?:(12)|52)$", byte_array): # MOVN/MOV instruction
+            value = bits2number(instr2, 5, 16) # discard 11 MSB, discard 5 LSB
+            return ~value if m.group(1) else value # invert bits in case of MOVN
         elif (m := FindRegHexOnce(r"[80-9F] 52  (.{3} [^72])? . . [A0-BF] 72$", byte_array)): # MOV & MOVK instruction
             if m.group(1): instr = instr3
-            immlo = instr >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
-            immhi = instr2 >> 5 & ((1 << 16) - 1) # discard 11 MSB, discard 5 LSB
-            return (immhi << 16) + immlo
+            return (bits2number(instr2, 5, 16) << 16) + bits2number(instr, 5, 16)
         elif FindRegHexOnce(r"[94 97 14 17]$", byte_array): # BL / B instruction
-            address = instr2 << 2 & ((1 << 28) - 1) # discard 6 MSB, append 2 zero LSB
+            address = bits2number(instr2, 0, 26) << 2 # discard 6 MSB, append 2 zero LSB
             return base + extend_sign(address, 27)
         elif FindRegHexOnce(r"[10 30 50 70]$", byte_array): # ADR instruction
-            immhi = instr2 >> 5 & ((1 << 19) - 1) # discard 8 MSB, discard 5 LSB
-            immlo = instr2 >> 29 & ((1 << 2) - 1) # discard 1 MSB, discard 29 LSB
-            return base + extend_sign(immhi << 2 + immlo, 20)
+            address = (bits2number(instr2, 5, 19) << 2) + bits2number(instr2, 29, 2)
+            return base + extend_sign(address, 20)
     elif file.arch == AMD64: # RVA & VA instructions of x64
         if FindRegHexOnce(r"(66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4]):
             return struct.unpack("<h", byte_array[-4:-2])[0] # 2-byte integer
