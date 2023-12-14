@@ -65,21 +65,21 @@ class Position:
 def Ref2Address(base, offset, file):
     byte_array = file.data[offset-8 : offset+4]
     if file.arch == ARM64 and base % 4 == 0: # PC relative instructions of arm64
-        (instr3, instr, instr2) = struct.unpack("<3L", byte_array) # 2 unsigned long in little-endian
+        (instr2,) = struct.unpack("<L", byte_array[-4:]) # 2 unsigned long in little-endian
         extend_sign = lambda number, msb: number - (1 << (msb+1)) if number >> msb else number
         bits2number = lambda bits, skips, count: (bits >> skips) & ((1 << count) - 1) # skip some LSB and extract some bits
-        if (m := FindRegHexOnce(r"[90 B0 D0 F0] (.{3} [^91])? .{3} 91$", byte_array)): # ADRP & ADD instructions
-            if m.group(1): instr = instr3
-            page_offset = ((bits2number(instr, 5, 19) << 2) + bits2number(instr, 29, 2)) << 12 # PAGE_SIZE = 0x1000 = 4096
+        if m := FindRegHexOnce(r"(.{3} [90 B0 D0 F0]) (.{3} [^91])? .{3} 91$", byte_array): # ADRP & ADD instructions
+            (instr,) = struct.unpack("<L", m.group(1))
+            page_offset = (bits2number(instr, 5, 19) << 2) + bits2number(instr, 29, 2) # PAGE_SIZE = 0x1000 = 4096
             imm12 = bits2number(instr2, 10, 12)
             if instr2 & 0x400000: imm12 <<= 12
             page_address = base >> 12 << 12 # clear 12 LSB
-            return page_address + extend_sign(page_offset, 32) + imm12
+            return page_address + extend_sign(page_offset << 12, 32) + imm12
         elif m := FindRegHexOnce(r"[80-9F] (?:(12)|52)$", byte_array): # MOVN/MOV instruction
             value = bits2number(instr2, 5, 16) # discard 11 MSB, discard 5 LSB
             return ~value if m.group(1) else value # invert bits in case of MOVN
-        elif (m := FindRegHexOnce(r"[80-9F] 52  (.{3} [^72])? . . [A0-BF] 72$", byte_array)): # MOV & MOVK instruction
-            if m.group(1): instr = instr3
+        elif m := FindRegHexOnce(r"(. . [80-9F] 52)  (.{3} [^72])? . . [A0-BF] 72$", byte_array): # MOV & MOVK instruction
+            (instr,) = struct.unpack("<L", m.group(1))
             return (bits2number(instr2, 5, 16) << 16) + bits2number(instr, 5, 16)
         elif FindRegHexOnce(r"[94 97 14 17]$", byte_array): # BL / B instruction
             address = bits2number(instr2, 0, 26) << 2 # discard 6 MSB, append 2 zero LSB
