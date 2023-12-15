@@ -27,7 +27,7 @@ def ApplyFix(fix, patched, file, refs, match = None):
                 p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
             if p0.address and not fix.look_behind:
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
-                if not refs.get(p.address): refs[p.address] = fix.name.split('.')[i] # extract part i from fix.name
+                if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
                 if p.file_o and fix.patch: PatchAtOffset(p.file_o, patched, fix.patch, i, p.ref_info(p0, ref0))
             else: FindNearestFunction(file, refs, p0, p)
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
