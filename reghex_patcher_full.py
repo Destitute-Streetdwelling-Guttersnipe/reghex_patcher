@@ -58,7 +58,7 @@ class Position:
         self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
         self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
         self.file_o = self.offset + file.base_offset if self.offset != None else None
-        self.info = f"a:0x{self.address or 0:04x} " + (f"o:0x{self.file_o:06x}" if self.file_o else '')
+        self.info = f"a:{self.address or 0:04x} " + (f"o:{self.file_o:06x}" if self.file_o else '')
     def ref_info(self, p0, ref):
         return f"{p0.info} -> {self.info if self.address != p0.address else '':{len(p0.info)}} {ref}" # keep length unchanged for output alignment
 
@@ -102,7 +102,7 @@ def FindFixes(file):
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, file.data):
             detected |= set([ fix.name, *m.groups() ]) # combine all matched detections
-            print(f"\n[-] Spotted at {Position(file, offset=m.start()).info} {fix.name} {m.groups()} in {m.group(0)}")
+            print(f"[-] ---- at {Position(file, offset=m.start()).info} {fix.name} {m.groups()} in {m.group(0)}\n")
     fixes = [fixes for tags, fixes in Fixes.tagged_fixes if set(tags).issubset(detected)] # combine tagged_fixes that is subset of detected list
     return [fix for fix in sum(fixes, []) if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
 
@@ -132,7 +132,7 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
         sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
         # with open(sys.argv[1] + "_" + FileInfo.arch, "wb") as f: f.write(data) # store detected file
     else: exit("[!] Cannot detect file type")
-    print(f"\n[+] ---- at 0x{base_offset:x}: Executable for {FileInfo.os} {FileInfo.arch}")
+    print(f"\n[+] ---- at o:{base_offset:x} Executable file for {FileInfo.os} {FileInfo.arch}")
     FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o], reverse=True) # sort by address
     FileInfo.offset2address = sorted([(o, addr, size) for addr, o, size in sections if addr and o], reverse=True) # sort by offset
     FileInfo.data, FileInfo.base_offset = data, base_offset
