@@ -19,7 +19,7 @@ def PatchByteSlice(patched, offset = 0, end = None):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
     for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) # if fix.test else None # for testing any fix
 
-def ApplyFix(fix, patched, file, refs, match = None):
+def ApplyFix(fix, patched, file, refs, match = None, fn = None):
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
@@ -29,13 +29,14 @@ def ApplyFix(fix, patched, file, refs, match = None):
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
                 if p.offset and fix.patch: PatchAtOffset(p, file, patched, fix.patch, i, p.ref_info(p0, ref0))
-            else: FindNearestFunction(file, refs, p0, p)
+            else: fn = FindNearestFunction(file, refs, p0, p, fn)
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
-def FindNearestFunction(file, refs, p0, p, memo = [None]): # memo stores values from previous call
+def FindNearestFunction(file, refs, p0, p, fn):
     if (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
-        memo[0] = fn = LastFunction(file, (fn0 := memo[0]) or Position(file, offset=0), p0) # find function containing this match
+        fn = LastFunction(file, (fn0 := fn) or Position(file, offset=0), p0) # find function containing this match
         print("[-] Found fn " + ['-' * len(fn.info), fn.info][fn0 != fn] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
+    return fn
 
 def PatchAtOffset(p, file, patched, patch, i, ref_info):
     if (h := patch[i-1] if isinstance(patch, list) else patch): print(f"[+] Patch at {ref_info} = {h}") # use the whole fix.patch if it's not a list
@@ -97,10 +98,10 @@ def Ref2Address(base, offset, file):
     return base # return the input address if referenced address is not found
 
 def FindFixes(file):
-    detected = set([ file.arch, file.os ])
+    detected = { file.arch, file.os }
     for fix in Fixes.detections:
         for m in FindRegHex(fix.reghex, file.data):
-            detected |= set([ fix.name, *m.groups() ]) # combine all matched detections
+            detected |= { fix.name, *m.groups() } # combine all matched detections
             print(f"[-] ---- at {Position(file, offset=m.start()).info} {fix.name} {m.groups()} in {m.group(0)}\n")
     fixes = [fixes for tags, fixes in Fixes.tagged_fixes if set(tags).issubset(detected)] # combine tagged_fixes that is subset of detected list
     return [fix for fix in sum(fixes, []) if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
@@ -131,7 +132,7 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
         sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
         # with open(sys.argv[1] + "_" + FileInfo.arch, "wb") as f: f.write(data) # store detected file
     else: exit("[!] Cannot detect file type")
-    print(f"\n[+] ---- at o:{base_offset:x} Executable file for {FileInfo.os} {FileInfo.arch}")
+    print(f"\n[+] ---- at o:{base_offset:x} Executable for {FileInfo.os} {FileInfo.arch}")
     FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o], reverse=True) # sort by address
     FileInfo.offset2address = sorted([(o, addr, size) for addr, o, size in sections if addr and o], reverse=True) # sort by offset
     FileInfo.data, FileInfo.base_offset = data, base_offset
