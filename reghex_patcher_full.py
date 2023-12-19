@@ -34,8 +34,8 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
 
 def FindNearestFunction(file, refs, p0, p, fn):
     if (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
-        fn = LastFunction(file, (fn0 := fn) or Position(file, offset=0), p0) # find function containing this match
-        print("[-] Found fn " + ['-' * len(fn.info), fn.info][fn0 != fn] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
+        diff = fn != (fn := LastFunction(file, fn or Position(file, offset=0), p0)) # find function containing this match
+        print("[-] Found fn " + ['-' * len(fn.info), fn.info][diff] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
     return fn
 
 def PatchAtOffset(p, file, patched, patch, i, ref_info):
@@ -57,8 +57,8 @@ def LastFunction(file, start, end, last = None): # file: FileInfo, start: Positi
 class Position:
     def __init__(self, file, address = None, offset = None):
         self.address = address if address != None else ConvertBetweenAddressAndOffset(file.offset2address, offset)
-        self.offset = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
-        self.info = f"a:{self.address or 0:04x} " + (f"o:{self.offset + file.base_offset:06x}" if self.offset else '')
+        self.offset = o = offset if offset != None else ConvertBetweenAddressAndOffset(file.address2offset, address)
+        self.info = f"a:{self.address or 0:04x} " + (f"o:{o + file.base_offset:06x}" if o else '')
     def ref_info(self, p0, ref):
         return f"{p0.info} -> {self.info if self.address != p0.address else '':{len(p0.info)}} {ref}" # keep length unchanged for output alignment
 
@@ -140,6 +140,6 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
 
 def ConvertBetweenAddressAndOffset(sections, position):
     for start, other_start, size in sections:
-        if position != None and start <= position < start + size: return position - start + other_start
+        if position != None and 0 <= position - start < size: return position - start + other_start
 
 if __name__ == "__main__": main(sys.argv)
