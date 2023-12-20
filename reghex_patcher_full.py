@@ -133,8 +133,8 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
         # with open(sys.argv[1] + "_" + FileInfo.arch, "wb") as f: f.write(data) # store detected file
     else: exit("[!] Cannot detect file type")
     print(f"\n[+] ---- at o:{base_offset:x} Executable for {FileInfo.os} {FileInfo.arch}")
-    FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o], reverse=True) # sort by address
-    FileInfo.offset2address = sorted([(o, addr, size) for addr, o, size in sections if addr and o], reverse=True) # sort by offset
+    FileInfo.address2offset = sorted([(addr, o, size) for addr, o, size in sections if addr and o]) # sort by address
+    FileInfo.offset2address = sorted([(o, addr, size) for addr, o, size in sections if addr and o]) # sort by offset
     FileInfo.data, FileInfo.base_offset = data, base_offset
     return FileInfo
 
