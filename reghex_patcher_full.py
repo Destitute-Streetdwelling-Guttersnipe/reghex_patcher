@@ -107,10 +107,10 @@ def FindFixes(file):
     return [fix for fix in sum(fixes, []) if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
 
 def UnpackAndPatch(data):
-    (magic, num_archs) = struct.unpack(">2L", data[:4*2])
+    (magic, num_archs) = struct.unpack(">2L", data[:(start := 4*2)])
     if magic == 0xCAFEBABE: # FAT_MAGIC of MacOS universal binary
-        for h_offset in range(4*2, 4*2 + num_archs * (h_size := 4*5), h_size):
-            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[h_offset : h_offset + h_size])
+        while (num_archs := num_archs - 1) >= 0:
+            (cpu_type, _, offset, size, _) = struct.unpack(">5L", data[start : (start := start + 4*5)])
             PatchByteSlice(data, offset, offset + size) # if cpu_type == 0x100000c else None
     else: PatchByteSlice(data)
 
