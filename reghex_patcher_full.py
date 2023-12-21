@@ -4,7 +4,7 @@ import re, sys, struct, io, patches as Fixes
 def main(argv):
     print(f"[-] ---- {credits}\nUsage: {argv[0]} input_file [output_file]")
     input_file = argv[1] if len(argv) > 1 else exit()
-    with open(input_file, 'rb') as file: PatchByteArray(data := bytearray(file.read()))
+    with open(input_file, 'rb') as file: UnpackAndPatch(data := bytearray(file.read()))
 
     output_file = argv[2] if len(argv) > 2 else exit() # discard patched data if output_file is omitted
     with open(output_file, "wb") as file: file.write(data) and print(f"[+] Saved to {output_file}")
@@ -106,11 +106,11 @@ def FindFixes(file):
     fixes = [fixes for tags, fixes in Fixes.tagged_fixes if set(tags).issubset(detected)] # combine tagged_fixes that is subset of detected list
     return [fix for fix in sum(fixes, []) if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
 
-def PatchByteArray(data):
+def UnpackAndPatch(data):
     (magic, num_archs) = struct.unpack(">2L", data[:4*2])
     if magic == 0xCAFEBABE: # FAT_MAGIC of MacOS universal binary
-        for header_o in range(4*2, 4*2 + num_archs * (header_s := 4*5), header_s):
-            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[header_o : header_o + header_s])
+        for h_offset in range(4*2, 4*2 + num_archs * (h_size := 4*5), h_size):
+            (cpu_type, cpu_subtype, offset, size, align) = struct.unpack(">5L", data[h_offset : h_offset + h_size])
             PatchByteSlice(data, offset, offset + size) # if cpu_type == 0x100000c else None
     else: PatchByteSlice(data)
 
