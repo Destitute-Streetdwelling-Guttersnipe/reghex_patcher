@@ -28,7 +28,7 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
             if p0.address and not fix.look_behind:
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
-                if p.offset and fix.patch: PatchAtOffset(p, file, patched, fix.patch, i, p.ref_info(p0, ref0))
+                if fix.patch: PatchAtOffset(p.offset, file, patched, fix.patch, i, p.ref_info(p0, ref0))
             else: fn = FindNearestFunction(file, refs, p0, p, fn)
     if fix.patch and not match: print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
@@ -38,9 +38,9 @@ def FindNearestFunction(file, refs, p0, p, fn):
         print("[-] Found fn " + ['-' * len(fn.info), fn.info][diff] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
     return fn
 
-def PatchAtOffset(p, file, patched, patch, i, ref_info):
+def PatchAtOffset(offset, file, patched, patch, i, ref_info):
     if (h := patch[i-1] if isinstance(patch, list) else patch): print(f"[+] Patch at {ref_info} = {h}") # use the whole fix.patch if it's not a list
-    if (b := bytes.fromhex(h)) and (o := p.offset + file.base_offset): patched[o : o + len(b)] = b # has no effect if b is empty
+    if (b := bytes.fromhex(h)) and offset: patched[(o := offset + file.base_offset) : o + len(b)] = b # has no effect if h is empty or h contains spaces
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
 
