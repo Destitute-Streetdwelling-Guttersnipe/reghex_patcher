@@ -57,8 +57,8 @@ def LastFunction(file, start, end, last = None): # file: FileInfo, start: Positi
 
 class Position:
     def __init__(self, file, address = None, offset = None):
-        self.address = address if address != None else ConvertBetweenAddressAndOffset(file.sections, offset, src=1, dst=0) # 1 is index of offset
-        self.offset = o = offset if offset != None else ConvertBetweenAddressAndOffset(file.sections, address, src=0, dst=1) # 0 is index of address
+        self.address = address if address != None else ConvertAddressOrOffset(file.sections, offset, to_address=True)
+        self.offset = o = offset if offset != None else ConvertAddressOrOffset(file.sections, address, to_offset=True)
         self.info = f"a:{self.address or 0:04x} " + (f"o:{o + file.base_offset:06x}" if o else '')
     def ref_info(self, p0, ref):
         return f"{p0.info} -> {self.info if self.address != p0.address else '':{len(p0.info)}} {ref}" # keep length unchanged for output alignment
@@ -137,7 +137,8 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
     FileInfo.data, FileInfo.base_offset = data, base_offset
     return FileInfo
 
-def ConvertBetweenAddressAndOffset(sections, position, src, dst, size = 2):
+def ConvertAddressOrOffset(sections, position, to_offset = False, to_address = False, size = 2):
+    src, dst = 0 if to_offset else 1, 0 if to_address else 1 # 0 is index of address, 1 is index of offset
     for s in sections:
         if position and s[src] and 0 <= position - s[src] < s[size]: return position - s[src] + s[dst]
 
