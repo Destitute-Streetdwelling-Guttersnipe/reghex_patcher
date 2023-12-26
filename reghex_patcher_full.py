@@ -57,8 +57,8 @@ def LastFunction(file, start, end, last = None): # file: FileInfo, start: Positi
 
 class Position:
     def __init__(self, file, address = None, offset = None):
-        self.address = address if address != None else file.offset2address(offset)
-        self.offset = o = offset if offset != None else file.address2offset(address)
+        self.address = address if address != None else ConvertBetweenAddressAndOffset(file.sections, offset, src=1, dst=0) # 1 is index of offset
+        self.offset = o = offset if offset != None else ConvertBetweenAddressAndOffset(file.sections, address, src=0, dst=1) # 0 is index of address
         self.info = f"a:{self.address or 0:04x} " + (f"o:{o + file.base_offset:06x}" if o else '')
     def ref_info(self, p0, ref):
         return f"{p0.info} -> {self.info if self.address != p0.address else '':{len(p0.info)}} {ref}" # keep length unchanged for output alignment
@@ -120,22 +120,20 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
         import pefile # pip3 install pefile
         FileInfo.os, pe = 'windows', pefile.PE(data=data, fast_load=True)
         FileInfo.arch = { 0x8664: AMD64, 0xAA64: ARM64 }[pe.FILE_HEADER.Machine] # die on unknown arch
-        sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
+        FileInfo.sections = [(pe.OPTIONAL_HEADER.ImageBase + s.VirtualAddress, s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
     elif re.search(b"^\x7FELF", data):
         from elftools.elf.elffile import ELFFile # pip3 install pyelftools
         FileInfo.os, elf = 'linux', ELFFile(io.BytesIO(data))
         FileInfo.arch = { 'EM_X86_64': AMD64, 'EM_AARCH64': ARM64 }[elf.header['e_machine']] # die on unknown arch
-        sections = [(s.header['sh_addr'], s.header['sh_offset'], s.header['sh_size']) for s in elf.iter_sections()]
+        FileInfo.sections = [(s.header['sh_addr'], s.header['sh_offset'], s.header['sh_size']) for s in elf.iter_sections()]
     elif re.search(b"^\xCF\xFA\xED\xFE", data):
         from macho_parser.macho_parser import MachO # pip3 install git+https://github.com/Destitute-Streetdwelling-Guttersnipe/macho_parser.git
         FileInfo.os, macho = 'osx', MachO(mm=data) # macho_parser was patched to use bytearray (instead of reading from file)
         FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64 }[macho.get_header().cputype] # die on unknown arch
-        sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
+        FileInfo.sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
         # with open(sys.argv[1] + "_" + FileInfo.arch, "wb") as f: f.write(data) # store detected file
     else: exit("[!] Cannot detect file type")
     print(f"\n[+] ---- at o:{base_offset:x} Executable for {FileInfo.os} {FileInfo.arch}")
-    FileInfo.address2offset = lambda p: ConvertBetweenAddressAndOffset(sections, p, src=0, dst=1) # 0 is index of address
-    FileInfo.offset2address = lambda p: ConvertBetweenAddressAndOffset(sections, p, src=1, dst=0) # 1 is index of offset
     FileInfo.data, FileInfo.base_offset = data, base_offset
     return FileInfo
 
