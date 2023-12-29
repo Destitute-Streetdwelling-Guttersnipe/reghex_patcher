@@ -56,6 +56,7 @@ startup_fixes = [
 ref_detections = [ # detection for references to found number, string and function
     # `look_behind` reghex should only match 1 byte (to avoid taking too many bytes that could belong to the next occurrence)
     Fix(name="amd64", reghex=r"(?<= .{4} 48 C7 06 | .{3} C7 44 . . | (?:. C7 [05 85]|C7 84 .) .{4} ) . |" ## move qword [rsi], ?; move [rcx+rdx+?], ?; move [r?p+????], ?; mov [r?+r?+????], ?
+                          + r"(?<= 48 69 C0 ) . |" ## imul rax, rax, 3600
                           + r"(?<= . 48 81 7D . | 48 81 7C 24 . ) . |" ## cmp qword [rbp+?], ?; cmp qword [rsp+?], ?
                           + r"(?<= . . 8D [81 87] | . 41 8D 8F | 41 8D 8C 24 | . . 81 [FC FF] ) . |" ## lea eax, [r?+?]; lea ecx, [r15+?]; lea ecx, [r12+?]; cmp edi, ?; cmp r?d, ?
                           + r"(?<= . 41 BE | 41 81 C6 | . 81 [C1 C5 C7 F8-FF] | 8D 9C 09 ) . |" ## mov e?, ?; mov r14d, ?; add r14d, ?; add e?, ?; cmp e?, ?; lea ebx, [rcx+rcx+?]

@@ -40,7 +40,7 @@ def FindNearestFunction(file, refs, p0, p, fn):
 
 def PatchAtOffset(offset, file, patched, patch, i, ref_info, match):
     h = patch[i-1] if isinstance(patch, list) else patch
-    print(f"[+] Patch at {ref_info} = {h}" if h else f"[-] Found at {ref_info} : {match.group(i).hex(' ')}") # use the whole fix.patch if it's not a list
+    print(f"[+] Patch at {ref_info} = {h}" if h else f"[-] Found at {ref_info} : {match.group(i).hex(' ')}") # show matched bytes if h is empty
     if (b := bytes.fromhex(h)) and offset: patched[(o := offset + file.base_offset) : o + len(b)] = b # has no effect if h is empty or h contains spaces
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
@@ -94,7 +94,7 @@ def Ref2Address(base, offset, file):
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
         if FindRegHexOnce(r"(([48 4C] 8D | 0F 10) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4]):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
-        if FindRegHexOnce(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (48 C7 05|C7 85|C7 84 .) .{4} | C7 44 . . | 3D | 0F B6 [88 B0])$", byte_array[:-4]):
+        if FindRegHexOnce(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (48 C7 05|C7 85|C7 84 .) .{4} | C7 44 . . | 3D | 0F B6 [88 B0] | 48 69 C0)$", byte_array[:-4]):
             return address # VA reference
     return base # return the input address if referenced address is not found
 
