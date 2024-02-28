@@ -19,6 +19,16 @@ A patcher working on hex bytes with support for x64 CALL instruction
   - use regex look-ahead intead of pre-defined instruction lengths (for computation of referenced offset)
   - use pre-defined patch bytes intead of computation for count of NOP bytes
   - better detection of architecture, app, OS ... using 1 list of `reghex`
+- `reghex_patcher_full` (in branch `main`) add detection of references from/to matched reghex patterns
+  - show referenced memory address in matched patterns
+  - show all references to matched patterns
+  - show the function that contains these references
+  - allow multiple sub-patterns (each can be patched individually)
+  - detect constant in instructions by showing matched bytes (when patch bytes is empty)
+  - use `arch`/`os` in patterns to specify targeted architure and operating system
+  - detect architure and operating system from input file/content
+  - compute memory address of references in x64/arm64 instructions
+  - extract/patch executable files from MacOS universal binary
 
 # what is reghex
 
