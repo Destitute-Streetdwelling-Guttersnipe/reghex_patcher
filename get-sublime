@@ -1,6 +1,6 @@
 #!/bin/bash
 if [[ $1 != text && $1 != merge ]]; then
-    echo unknow app: $1; exit 1
+    echo ERROR: unknown app: $1; exit 1
 fi
 case $2 in
     mac  )
@@ -19,15 +19,20 @@ case $2 in
         package=sublime-$1-$3-1-aarch64.pkg.tar.xz
         file=opt/sublime_$1/sublime_$1
         ;;
-    *    ) echo unknown platform: $2; exit 2 ;;
+    *    ) echo ERROR: unknown platform: $2; exit 2 ;;
 esac
-if [[ ! -f $package ]]; then
-    wget https://download.sublimetext.com/$package
-	# direct link from https://www.sublimetext.com/download_thanks and https://www.sublimemerge.com/download_thanks
+
+target=sublime_$1_$2_$3
+if [[ -f $target ]]; then
+    echo ERROR: $target already exists; exit 3
 fi
+if [[ ! -f $package ]]; then
+    wget --continue https://download.sublimetext.com/$package
+    # direct link from https://www.sublimetext.com/download_thanks and https://www.sublimemerge.com/download_thanks
+fi
+
 case $package in
-    *.zip) unzip -p $package "$file" > sublime_$1_$2_$3 ;;
-    *    ) tar -Oxf $package "$file" > sublime_$1_$2_$3 ;;
+    *.zip) unzip $package "$file" ;;
+    *    ) tar -xf $package "$file" ;;
 esac
-# mv -v "$file" sublime_$1_$2_$3
-echo extracted file: sublime_$1_$2_$3
+mv -v "$file" $target
