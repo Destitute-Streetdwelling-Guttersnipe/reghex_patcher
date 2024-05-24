@@ -34,11 +34,14 @@ case $package in
         # the package can be mounted with FUSE: `simple-httpfs --schema=https $HOME/fuse-mounts`
         package=$HOME/fuse-mounts/download.sublimetext.com/$package..
         # wget --continue https://download.sublimetext.com/$package
-        unzip $package "$file"
+        # unzip $package "$file"
+        7zz e $package "$file"
+        # 7-zip can extract file without archived file path (and show progress of extraction)
     ;;
     *    )
         wget --continue https://download.sublimetext.com/$package
-        tar -xf $package "$file"
+        tar --strip-components=2 -xf $package "$file"
+        # skipping file path in archive (opt/sublime_$1)
     ;;
 esac
-mv -v "$file" $target
+mv -v ${file##*/} $target
