@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leogx9r & rainbowpigeon for inspiration)"
 import re, sys, struct, io, patches as Fixes
 
 def main(argv):
-    print(f"[-] ---- {credits}\nUsage: {argv[0]} input_file [output_file]")
-    input_file = argv[1] if len(argv) > 1 else exit()
+    print(f"[-] ---- {credits}\nUsage: {argv[0]} [input_file [output_file]]")
+    input_file = argv[1] if len(argv) > 1 else sys.stdin.fileno() # read from stdin if input_file is omitted
     with open(input_file, 'rb') as file: UnpackAndPatch(data := bytearray(file.read()))
 
     output_file = argv[2] if len(argv) > 2 else exit() # discard patched data if output_file is omitted
