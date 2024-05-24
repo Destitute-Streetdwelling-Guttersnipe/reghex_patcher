@@ -26,13 +26,19 @@ target=sublime_$1_$2_$3
 if [[ -f $target ]]; then
     echo ERROR: $target already exists; exit 3
 fi
-if [[ ! -f $package ]]; then
-    wget --continue https://download.sublimetext.com/$package
-    # direct link from https://www.sublimetext.com/download_thanks and https://www.sublimemerge.com/download_thanks
-fi
+# ST download links: https://www.sublimetext.com/download_thanks
+# SM download links: https://www.sublimemerge.com/download_thanks
 
 case $package in
-    *.zip) unzip $package "$file" ;;
-    *    ) tar -xf $package "$file" ;;
+    *.zip)
+        # the package can be mounted with FUSE: `simple-httpfs --schema=https $HOME/fuse-mounts`
+        package=$HOME/fuse-mounts/download.sublimetext.com/$package..
+        # wget --continue https://download.sublimetext.com/$package
+        unzip $package "$file"
+    ;;
+    *    )
+        wget --continue https://download.sublimetext.com/$package
+        tar -xf $package "$file"
+    ;;
 esac
 mv -v "$file" $target
