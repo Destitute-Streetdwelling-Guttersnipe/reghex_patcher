@@ -31,7 +31,8 @@ fi
 
 case $package in
     *.zip)
-        # the package can be mounted with FUSE: `simple-httpfs --schema=https $HOME/fuse-mounts`
+        # mount remote archive to a local path with FUSE (https://github.com/higlass/simple-httpfs)
+        ps -C simple-httpfs || simple-httpfs --schema=https $HOME/fuse-mounts
         package=$HOME/fuse-mounts/download.sublimetext.com/$package..
         # wget --continue https://download.sublimetext.com/$package
         # unzip $package "$file"
