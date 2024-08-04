@@ -3,6 +3,9 @@ if [[ $1 != text && $1 != merge ]]; then
     echo ERROR: unknown app: $1; exit 1
 fi
 case $2 in
+    all  )
+        for os in mac win linux linux-arm64; do echo ==== $os ====; $0 $1 $os $3; done;
+        exit ;;
     mac  )
         package=sublime_$1_build_$3_mac.zip
         file="Sublime ${1^}.app/Contents/MacOS/sublime_$1"
