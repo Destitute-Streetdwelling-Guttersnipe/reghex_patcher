@@ -3,8 +3,8 @@ credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leo
 import re, sys, struct, io, patches as Fixes
 
 def main(argv):
-    print(f"[-] ---- {credits}\nUsage: {argv[0]} [input_file [output_file]]")
-    input_file = argv[1] if len(argv) > 1 else sys.stdin.fileno() # read from stdin if input_file is omitted
+    if len(argv) <= 1: exit(f"[-] ---- {credits}\nUsage: {argv[0]} [input_file [output_file]]")
+    input_file = argv[1] if argv[1] != '-' else sys.stdin.fileno() # read from stdin if input_file is a hyphen
     with open(input_file, 'rb') as file: UnpackAndPatch(data := bytearray(file.read()))
 
     output_file = argv[2] if len(argv) > 2 else exit() # discard patched data if output_file is omitted
@@ -137,7 +137,7 @@ def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
         FileInfo.arch = { 0x1000007: AMD64, 0x100000c: ARM64 }[macho.get_header().cputype] # die on unknown arch
         FileInfo.sections = [(s.addr, s.offset, s.size) for s in macho.get_sections()]
         # with open(sys.argv[1] + "_" + FileInfo.arch, "wb") as f: f.write(data) # store detected file
-    else: exit("[!] Cannot detect file type")
+    else: exit("[!] ---- Cannot detect file type: " + data[:8].hex(' '))
     print(f"\n[+] ---- at o:{base_offset:x} Executable for {FileInfo.os} {FileInfo.arch}")
     FileInfo.data, FileInfo.base_offset = data, base_offset
     return FileInfo
