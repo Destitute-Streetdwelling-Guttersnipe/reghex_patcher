@@ -94,13 +94,13 @@ def Ref2Address(base, offset, file):
         if FindRegHexOnce(r"(66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4]):
             return struct.unpack("<h", byte_array[-4:-2])[0] # 2-byte integer
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
-        if FindRegHexOnce(r"(([48 4C] [89 8D] | 88 | 0F [10 11]) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4]):
+        if FindRegHexOnce(r"(([48 4C] [89 8D] | [88 8A] | 0F [10 11 28 7F]) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4]):
             return base + 4 + address # RVA reference is based on next instruction (which OFTEN is at the next 4 bytes)
         if FindRegHexOnce(r"(83 25 | C6 05)$", byte_array[:-4]):
             return base + 5 + address # RVA reference is based on next instruction (which OFTEN is at the next 5 bytes)
         if FindRegHexOnce(r"(C7 05)$", byte_array[:-4]):
             return base + 8 + address # RVA reference is based on next instruction (which OFTEN is at the next 8 bytes)
-        if FindRegHexOnce(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (48 C7 05|C7 85|C7 84 .) .{4} | C7 44 . . | 3D | 0F B6 [88 B0] | 48 69 C0)$", byte_array[:-4]):
+        if FindRegHexOnce(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (C7 [05 85]|C7 84 .) .{4} | C7 44 . . | 3D | 0F B6 [88 B0] | 48 69 C0)$", byte_array[:-4]):
             return address # VA reference
     return base # return the input address if referenced address is not found
 
