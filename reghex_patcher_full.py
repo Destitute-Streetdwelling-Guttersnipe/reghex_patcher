@@ -20,7 +20,7 @@ def PatchByteSlice(patched, offset = 0, end = None):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
     for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) # if fix.test else None # for testing any fix
 
-def ApplyFix(fix, patched, file, refs, match = None, fn = None):
+def ApplyFix(fix, patched, file, refs, match = None, fn = None, ref0 = None):
     for match in FindRegHex(fix.reghex, file.data):
         for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
@@ -32,9 +32,9 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
                 if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
                 h = ''.join(fix.patch[i-1:i]) if isinstance(fix.patch, list) else fix.patch # non-existent element in array fix.patch is considered to be an empty string
                 if p.address == p0.address and h == '': ref0 += f" : {match.group(i).hex(' ')}" # show matched bytes if h is empty, but hide matched bytes of reference address
-                if (fn := 1) and fix.patch != '': PatchAtOffset(p.offset, file, patched, h, p.ref_info(p0, ref0))
+                if fix.patch != '': PatchAtOffset(p.offset, file, patched, h, p.ref_info(p0, ref0))
             else: fn = FindNearestFunction(file, refs, p0, p, fn)
-    if fix.patch != '' and (not match or not fn): print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
+    if fix.patch != '' and (not match or not ref0): print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
 def FindNearestFunction(file, refs, p0, p, fn):
     if (ref0 := refs.get(p0.address)) or (ref := refs.get(p.address)): # look behind if p0 or p is in refs
