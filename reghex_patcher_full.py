@@ -27,8 +27,8 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
             if p0.address and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
             if p0.address and not fix.look_behind:
-                ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address) and fix.patch[i-1:i] == ['\r']: break # skip a match if referenced address is not found earlier and its patch is '\r'
+                ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
                 h = ''.join(fix.patch[i-1:i]) if isinstance(fix.patch, list) else fix.patch # non-existent element in array fix.patch is considered to be an empty string
                 if p.address == p0.address and h == '': ref0 += f" : {match.group(i).hex(' ')}" # show matched bytes if h is empty, but hide matched bytes of reference address
