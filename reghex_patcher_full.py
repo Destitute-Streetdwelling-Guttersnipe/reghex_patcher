@@ -30,7 +30,9 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None):
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address) and fix.patch[i-1:i] == ['\r']: break # skip a match if referenced address is not found earlier and its patch is '\r'
                 if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
-                if (fn := 1) and fix.patch != '': PatchAtOffset(p.offset, file, patched, fix.patch, i, p.ref_info(p0, ref0), match)
+                h = ''.join(fix.patch[i-1:i]) if isinstance(fix.patch, list) else fix.patch # non-existent element in array fix.patch is considered to be an empty string
+                if p.address == p0.address and h == '': ref0 += f" : {match.group(i).hex(' ')}" # show matched bytes if h is empty, but hide matched bytes of reference address
+                if (fn := 1) and fix.patch != '': PatchAtOffset(p.offset, file, patched, h, p.ref_info(p0, ref0))
             else: fn = FindNearestFunction(file, refs, p0, p, fn)
     if fix.patch != '' and (not match or not fn): print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
 
@@ -40,9 +42,8 @@ def FindNearestFunction(file, refs, p0, p, fn):
         print("[-] Found fn " + ['-' * len(fn.info), fn.info][diff] + f" <- {p.ref_info(p0, ref0 or '-'+ref)}") # show fn.info when a new function is found
     return fn
 
-def PatchAtOffset(offset, file, patched, patch, i, ref_info, match):
-    h = ''.join(patch[i-1:i]) if isinstance(patch, list) else patch # non-existent element in array fix.patch is considered to be an empty string
-    print(f"[+] Patch at {ref_info} = {h}" if h else f"[-] Found at {ref_info} : {match.group(i).hex(' ')}") # show matched bytes if h is empty
+def PatchAtOffset(offset, file, patched, h, ref_info):
+    print(f"[+] Patch at {ref_info} = {h}" if len(h)>=2 else f"[-] Found at {ref_info}")
     if (b := bytes.fromhex(h)) and offset: patched[(o := offset + file.base_offset) : o + len(b)] = b # has no effect if h is empty or h contains spaces
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
