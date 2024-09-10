@@ -31,7 +31,7 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None, ref0 = None):
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
                 h = ''.join(fix.patch[i-1:i]) if isinstance(fix.patch, list) else fix.patch # non-existent element in array fix.patch is considered to be an empty string
-                if p.address == p0.address and h == '': ref0 += f" : {match.group(i).hex(' ')}" # show matched bytes if h is empty, but hide matched bytes of reference address
+                if p.address == p0.address: ref0 += f" : {match.group(i).hex(' ')}" # show matched bytes unless referenced address is found from match bytes
                 if fix.patch != '': PatchAtOffset(p.offset, file, patched, h, p.ref_info(p0, ref0))
             else: fn = FindNearestFunction(file, refs, p0, p, fn)
     if fix.patch != '' and (not match or not ref0): print(f"[!] Cannot find pattern: {fix.name} {fix.reghex}")
