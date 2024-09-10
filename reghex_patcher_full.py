@@ -92,7 +92,9 @@ def Ref2Address(base, offset, file):
             address = (bits2number(instr2, 5, 19) << 2) + bits2number(instr2, 29, 2)
             return base + extend_sign(address, 20)
     elif file.arch == AMD64: # RVA & VA instructions of x64
-        if FindRegHexOnce(r"(66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4]):
+        if FindRegHexOnce(r"48 [B9 BA]", byte_array[:-4]):
+            return struct.unpack("<q", file.data[offset:offset+8])[0] # 8-byte integer
+        if FindRegHexOnce(r"(66 C7 05 .{4}|66 C7 84 . .{4} | 66 C7 44 . .)$", byte_array[:-4]):
             return struct.unpack("<h", byte_array[-4:-2])[0] # 2-byte integer
         (address,) = struct.unpack("<l", byte_array[-4:]) # address size is 4 bytes
         if FindRegHexOnce(r"(([48 4C] [89 8D] | [88 8A] | 0F [10 11 28 7F]) [05 0D 15 1D 25 2D 35 3D] | [E8 E9])$", byte_array[:-4]):
