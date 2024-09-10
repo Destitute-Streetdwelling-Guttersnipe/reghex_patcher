@@ -27,10 +27,10 @@ def ApplyFix(fix, patched, file, refs, match = None, fn = None, ref0 = None):
             if p0.address and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
             if p0.address and not fix.look_behind:
-                if not refs.get(p.address) and fix.patch[i-1:i] == ['\r']: break # skip a match if referenced address is not found earlier and its patch is '\r'
+                h = ''.join(fix.patch[i-1:i]) if isinstance(fix.patch, list) else fix.patch # non-existent element in array fix.patch is considered to be an empty string
+                if not refs.get(p.address) and h == '\r': break # skip a match if referenced address is not found earlier and its patch is '\r'
                 ref0 = refs[p0.address] = fix.name if i == 0 else '.'.join(fix.name.split('.')[0:i+1:i]) # extract part 0 and part i from fix.name if i > 0
                 if not refs.get(p.address): refs[p.address] = '.'+fix.name.split('.')[i] # extract part i from fix.name
-                h = ''.join(fix.patch[i-1:i]) if isinstance(fix.patch, list) else fix.patch # non-existent element in array fix.patch is considered to be an empty string
                 if p.address == p0.address: ref0 += f" : {match.group(i).hex(' ')}" # show matched bytes unless referenced address is found from match bytes
                 if fix.patch != '': PatchAtOffset(p.offset, file, patched, h, p.ref_info(p0, ref0))
             else: fn = FindNearestFunction(file, refs, p0, p, fn)
@@ -43,7 +43,7 @@ def FindNearestFunction(file, refs, p0, p, fn):
     return fn
 
 def PatchAtOffset(offset, file, patched, h, ref_info):
-    print(f"[+] Patch at {ref_info} = {h}" if len(h)>=2 else f"[-] Found at {ref_info}")
+    print(f"[+] Patch at {ref_info} => {h}" if len(h)>=2 else f"[-] Found at {ref_info}")
     if (b := bytes.fromhex(h)) and offset: patched[(o := offset + file.base_offset) : o + len(b)] = b # has no effect if h is empty or h contains spaces
 
 AMD64, ARM64 = 'amd64', 'arm64' # arch x86-64, arch AArch64
@@ -62,7 +62,7 @@ class Position:
     def __init__(self, file, address = None, offset = None):
         self.address = address if address != None else ConvertOffsetToAddress(file.sections, offset)
         self.offset = o = offset if offset != None else ConvertAddressToOffset(file.sections, address)
-        self.info = f"a:{self.address or 0:04x} " + (f"o:{o + file.base_offset:06x}" if o else '')
+        self.info = f"a:{self.address or 0:02x} " + (f"o:{o + file.base_offset:06x}" if o else '')
     def ref_info(self, p0, ref):
         return f"{p0.info} -> {self.info if self.address != p0.address else '':{len(p0.info)}} {ref}" # keep length unchanged for output alignment
 
