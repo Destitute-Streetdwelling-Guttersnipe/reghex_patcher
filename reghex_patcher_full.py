@@ -60,9 +60,10 @@ def LastFunction(file, start, end, last = None): # file: FileInfo, start: Positi
 
 class Position:
     def __init__(self, file, address = None, offset = None):
-        self.address = address if address != None else ConvertOffsetToAddress(file.sections, offset)
-        self.offset = o = offset if offset != None else ConvertAddressToOffset(file.sections, address)
-        self.info = f"a:{self.address or 0:02x} " + (f"o:{o + file.base_offset:06x}" if o else '')
+        a = self.address = address if address != None else ConvertOffsetToAddress(file.sections, offset)
+        o = self.offset = offset if offset != None else ConvertAddressToOffset(file.sections, address)
+        width = lambda n: len(re.sub("^-?(00)+", '', f"{n or 0:08x}")) # use even number of hex digits
+        self.info = f"a:{a or 0:0{width(a)}x} " + (f"o:{o + file.base_offset:0{width(o)}x}" if o else '')
     def ref_info(self, p0, ref):
         return f"{p0.info} -> {self.info if self.address != p0.address else '':{len(p0.info)}} {ref}" # keep length unchanged for output alignment
 
