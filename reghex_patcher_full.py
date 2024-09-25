@@ -2,8 +2,12 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leogx9r & rainbowpigeon for inspiration)"
 import re, sys, struct, io, patches as Fixes
 
+onlyTest = False # only use fixes with test=True (if option '-t' exists)
+
 def main(argv):
     if len(argv) <= 1: exit(f"[-] ---- {credits}\nUsage: {argv[0]} [input_file [output_file]]")
+    global onlyTest
+    if (onlyTest := argv[1] == '-t'): argv.remove('-t')
     input_file = argv[1] if argv[1] != '-' else sys.stdin.fileno() # read from stdin if input_file is a hyphen
     with open(input_file, 'rb') as file: UnpackAndPatch(data := bytearray(file.read()))
 
@@ -18,7 +22,7 @@ def FindRegHexOnce(reghex, data): return next(FindRegHex(reghex, data), None)
 
 def PatchByteSlice(patched, offset = 0, end = None):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
-    for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) # if fix.test else None # for testing any fix
+    for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) if onlyTest == fix.test else None # for testing any fix
 
 def ApplyFix(fix, patched, file, refs, match = None, fn = None, ref0 = None):
     for match in FindRegHex(fix.reghex, file.data):
