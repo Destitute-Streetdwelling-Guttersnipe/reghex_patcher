@@ -2,14 +2,12 @@
 credits = "RegHex Patcher by Destitute-Streetdwelling-Guttersnipe (Thanks to leogx9r & rainbowpigeon for inspiration)"
 import re, sys, struct, io, patches as Fixes
 
-onlyTest = False # only use fixes with test=True (if option '-t' exists)
-
 def main(argv):
     if len(argv) <= 1: exit(f"[-] ---- {credits}\nUsage: {argv[0]} [input_file [output_file]]")
-    global onlyTest
-    if (onlyTest := argv[1] == '-t'): argv.remove('-t')
+    if (onlyTest := argv[1] == '-t'): argv.remove('-t') # only use fixes with test=True (if option '-t' exists)
+
     input_file = argv[1] if argv[1] != '-' else sys.stdin.fileno() # read from stdin if input_file is a hyphen
-    with open(input_file, 'rb') as file: UnpackAndPatch(data := bytearray(file.read()))
+    with open(input_file, 'rb') as file: UnpackAndPatch(data := bytearray(file.read()), onlyTest)
 
     output_file = argv[2] if len(argv) > 2 else exit() # discard patched data if output_file is omitted
     with open(output_file, "wb") as file: file.write(data) and print(f"[+] Saved to {output_file}")
@@ -20,7 +18,7 @@ def FindRegHex(reghex, data):
 
 def FindRegHexOnce(reghex, data): return next(FindRegHex(reghex, data), None)
 
-def PatchByteSlice(patched, offset = 0, end = None):
+def PatchByteSlice(patched, offset = 0, end = None, onlyTest = False):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
     for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) if onlyTest == fix.test else None # for testing any fix
 
@@ -120,13 +118,13 @@ def FindFixes(file):
     fixes = [fixes for tags, fixes in Fixes.tagged_fixes if set(tags).issubset(detected)] # combine tagged_fixes that is subset of detected list
     return [fix for fix in sum(fixes, []) if fix.arch in [None, file.arch] and fix.os in [None, file.os]] # filter out different arch & os
 
-def UnpackAndPatch(data):
+def UnpackAndPatch(data, onlyTest = False):
     (magic, num_archs) = struct.unpack(">2L", data[:(start := 4*2)]) if len(data) >= 4*2 else (0, 0)
     if magic == 0xCAFEBABE: # FAT_MAGIC of MacOS universal binary
         while (num_archs := num_archs - 1) >= 0:
             (cpu_type, _, offset, size, _) = struct.unpack(">5L", data[start : (start := start + 4*5)])
-            PatchByteSlice(data, offset, offset + size) # if cpu_type == 0x100000c else None
-    else: PatchByteSlice(data)
+            PatchByteSlice(data, offset, offset + size, onlyTest) # if cpu_type == 0x100000c else None
+    else: PatchByteSlice(data, 0, None, onlyTest)
 
 def FileInfo(data = b'', base_offset = 0): # FileInfo is a singleton object
     if re.search(b"^MZ", data):
