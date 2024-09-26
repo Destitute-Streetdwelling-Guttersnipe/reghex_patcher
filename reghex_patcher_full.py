@@ -24,7 +24,7 @@ def PatchByteSlice(patched, offset = 0, end = None, onlyTest = False):
 
 def ApplyFix(fix, patched, file, refs, match = None, fn = None, ref0 = None):
     for match in FindRegHex(fix.reghex, file.data):
-        for i in range(1, match.lastindex + 1) if match.lastindex else range(1): # loop through all matched groups
+        for i in range(1, len(match.groups()) + 1) if len(match.groups()) else range(1): # loop through all matched groups
             p0 = p = Position(file, offset=match.start(i)) # offset is -1 when a group is not found
             if p0.address and (fix.look_behind or (i > 0 and len(match.group(i)) == 4)): # find referenced address from any 4-byte group
                 p = Position(file, address=Ref2Address(p0.address, p0.offset, file))
