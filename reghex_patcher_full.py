@@ -105,7 +105,7 @@ def Ref2Address(base, offset, file):
             return base + 5 + address # RVA reference is based on next instruction (which OFTEN is at the next 5 bytes)
         if FindRegHexOnce(r"(C7 05)$", byte_array[:-4]):
             return base + 8 + address # RVA reference is based on next instruction (which OFTEN is at the next 8 bytes)
-        if FindRegHexOnce(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (C7 [05 85]|C7 84 .) .{4} | C7 44 . . | 3D | 0F B6 [88 B0] | 48 69 C0)$", byte_array[:-4]):
+        if FindRegHexOnce(r"([B8-BB BD-BF] | [8A 8D] [80-84 86-8C 8E-94 96-97] | 81 [C1 C5-C7 F8-FF] | 8D 8C 24 | 8D 9C 09 | 48 81 7D . | 48 81 7C 24 . | 48 C7 06 | (C7 [05 83 85-87]|C7 84 24) .{4} | C7 44 . . | 3D | 0F B6 [88 B0] | 48 69 C0)$", byte_array[:-4]):
             return address # VA reference
     return base # return the input address if referenced address is not found
 
