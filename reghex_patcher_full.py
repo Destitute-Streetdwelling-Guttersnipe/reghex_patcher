@@ -20,7 +20,7 @@ def FindRegHexOnce(reghex, data): return next(FindRegHex(reghex, data), None)
 
 def PatchByteSlice(patched, offset = 0, end = None, onlyTest = False):
     refs, file = {}, FileInfo(patched[offset : end], offset) # reset refs for each file
-    for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) if onlyTest == fix.test else None # for testing any fix
+    for fix in FindFixes(file): ApplyFix(fix, patched, file, refs) if onlyTest in [False, fix.test] else None # only use fixes with test=True (if option '-t' exists)
 
 def ApplyFix(fix, patched, file, refs, match = None, fn = None, ref0 = None):
     for match in FindRegHex(fix.reghex, file.data):
